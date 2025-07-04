@@ -1,7 +1,8 @@
 import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import HomeScreen from '../screens/HomeScreen';
-import ProfileScreen from '../screens/ProfileScreen';
+import StatsScreen from '../screens/StatsScreen';
+import HistoryScreen from '../screens/HistoryScreen';
 import { Ionicons } from '@expo/vector-icons';
 
 const Tab = createBottomTabNavigator();
@@ -14,17 +15,20 @@ export default function Tabs() {
           let iconName = 'home';
 
           if (route.name === 'Home') iconName = 'home';
-          else if (route.name === 'Profile') iconName = 'person';
+          else if (route.name === 'Stats') iconName = 'stats-chart';
+          else if (route.name === 'History') iconName = 'time';
 
           return <Ionicons name={iconName as any} size={size} color={color} />;
         },
         tabBarActiveTintColor: '#2563eb',
         tabBarInactiveTintColor: 'gray',
         headerShown: false,
+        tabBarShowLabel: false
       })}
     >
       <Tab.Screen name="Home" component={HomeScreen} />
-      <Tab.Screen name="Profile" component={ProfileScreen} />
+      <Tab.Screen name="Stats" component={StatsScreen} />
+      <Tab.Screen name="History" component={HistoryScreen} />
     </Tab.Navigator>
   );
 }
