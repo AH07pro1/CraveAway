@@ -1,13 +1,11 @@
-import { View, Text } from 'react-native';
-import '../global.css';
-
+import React from 'react';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import Navigation from './navigation/Navigation';
+import '../global.css'; // Import global styles
 export default function App() {
   return (
-    <View className="flex-1 bg-blue-500 justify-center items-center">
-  <Text className="text-white text-2xl font-extrabold">
-    Hello NativeWind!
-  </Text>
-</View>
-
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <Navigation />
+    </GestureHandlerRootView>
   );
 }
