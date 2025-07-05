@@ -18,7 +18,7 @@ export default function Navigation() {
     <NavigationContainer>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         <Stack.Screen name="Tabs" component={Tabs} />
-        <Stack.Screen name="CreateCravingForm" component={CreateCravingForm} />
+        {/* <Stack.Screen name="CreateCravingForm" component={CreateCravingForm} /> */}
       </Stack.Navigator>
     </NavigationContainer>
   );

@@ -1,4 +1,3 @@
-// screens/CreateCravingForm.tsx
 import React, { useState } from "react";
 import {
   View,
@@ -9,6 +8,8 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from "react-native";
+import Slider from "@react-native-community/slider";
+import { Picker } from "@react-native-picker/picker";
 
 const cravingTypes = [
   "food",
@@ -23,7 +24,7 @@ const cravingTypes = [
 ];
 
 export default function CreateCravingForm() {
-  const [intensity, setIntensity] = useState("");
+  const [intensity, setIntensity] = useState("5");
   const [notes, setNotes] = useState("");
   const [resolved, setResolved] = useState(false);
   const [type, setType] = useState(cravingTypes[0]);
@@ -31,48 +32,53 @@ export default function CreateCravingForm() {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : "height"}
-      className="flex-1 bg-white"
+      className="flex-1 bg-[#e0f7f6]"
     >
       <ScrollView contentContainerStyle={{ flexGrow: 1 }} className="p-6">
-        <Text className="text-3xl font-bold text-blue-600 mb-6 text-center">
+        <Text className="text-3xl font-bold text-[#08BAAC] mt-4 mb-6 text-center">
           Create Craving Event
         </Text>
 
         {/* Intensity */}
-        <Text className="text-lg font-semibold mb-1">Intensity (1–10)</Text>
-        <TextInput
-          value={intensity}
-          onChangeText={(text) => {
-            // Allow only numbers 1-10
-            if (/^\d*$/.test(text)) {
-              if (+text <= 10) setIntensity(text);
-            }
-          }}
-          keyboardType="numeric"
-          placeholder="Enter intensity"
-          className="border border-gray-300 rounded-md px-4 py-2 mb-4"
-          maxLength={2}
+        <Text className="text-lg font-semibold text-[#0d6e67] mb-1">
+          Intensity: {intensity}
+        </Text>
+        <Slider
+          style={{ width: "100%", height: 40 }}
+          minimumValue={1}
+          maximumValue={10}
+          step={1}
+          value={+intensity}
+          onValueChange={(val) => setIntensity(val.toString())}
+          minimumTrackTintColor="#08BAAC"
+          maximumTrackTintColor="#b3ece8"
+          thumbTintColor="#08BAAC"
         />
 
         {/* Notes */}
-        <Text className="text-lg font-semibold mb-1">Notes (trigger)</Text>
+        <Text className="text-lg font-semibold text-[#0d6e67] mt-6 mb-1">
+          Notes (trigger)
+        </Text>
         <TextInput
           value={notes}
           onChangeText={setNotes}
           placeholder="What triggered it?"
+          placeholderTextColor="#94a3b8"
           multiline
           numberOfLines={4}
-          className="border border-gray-300 rounded-md px-4 py-2 mb-4 text-gray-700"
+          className="border border-[#08BAAC] bg-white rounded-md px-4 py-2 mb-4 text-[#0d6e67]"
           textAlignVertical="top"
         />
 
         {/* Resolved */}
-        <View className="flex-row items-center mb-4">
-          <Text className="text-lg font-semibold mr-4">Resolved?</Text>
+        <View className="flex-row items-center mb-4 mt-2">
+          <Text className="text-lg font-semibold text-[#0d6e67] mr-4">
+            Resolved?
+          </Text>
           <Pressable
             onPress={() => setResolved((prev) => !prev)}
             className={`w-12 h-6 rounded-full ${
-              resolved ? "bg-blue-600" : "bg-gray-300"
+              resolved ? "bg-[#08BAAC]" : "bg-gray-300"
             }`}
           >
             <View
@@ -83,35 +89,34 @@ export default function CreateCravingForm() {
           </Pressable>
         </View>
 
-        {/* Type */}
-        <Text className="text-lg font-semibold mb-1">Type</Text>
-        <View className="border border-gray-300 rounded-md mb-6">
-          {cravingTypes.map((item) => (
-            <Pressable
-              key={item}
-              onPress={() => setType(item)}
-              className={`px-4 py-3 ${
-                type === item ? "bg-blue-100" : ""
-              }`}
-            >
-              <Text
-                className={`text-base ${
-                  type === item ? "text-blue-700 font-semibold" : "text-gray-700"
-                }`}
-              >
-                {item.charAt(0).toUpperCase() + item.slice(1)}
-              </Text>
-            </Pressable>
-          ))}
+        {/* Type Dropdown */}
+        <Text className="text-lg font-semibold text-[#0d6e67] mb-1">Type</Text>
+        <View
+          className="border border-[#08BAAC] rounded-md bg-white mb-6"
+          style={{ overflow: "hidden" }}
+        >
+          <Picker
+            selectedValue={type}
+            onValueChange={(itemValue) => setType(itemValue)}
+            dropdownIconColor="#08BAAC"
+            style={{ color: "#08BAAC" }}
+          >
+            {cravingTypes.map((item) => (
+              <Picker.Item
+                label={item.charAt(0).toUpperCase() + item.slice(1)}
+                value={item}
+                key={item}
+              />
+            ))}
+          </Picker>
         </View>
 
         {/* Submit button */}
         <Pressable
           onPress={() => {
-            // TODO: submit handler
             console.log({ intensity, notes, resolved, type });
           }}
-          className="bg-blue-600 rounded-md py-3"
+          className="bg-[#08BAAC] rounded-md py-3"
         >
           <Text className="text-white text-center font-bold text-lg">
             Submit

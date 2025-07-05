@@ -12,7 +12,10 @@ export default function HomeScreen({ navigation }: any) {
       </View>
       <TouchableOpacity
         className="bg-[#08BAAC] px-10 py-6 rounded-2xl shadow-lg mb-8 w-full items-center"
-        onPress={() => navigation.navigate('CalmingSession')}
+        onPress={() => navigation.navigate('Calming', {
+  screen: 'CalmingSession',
+})
+}
         activeOpacity={0.85}
       >
         <Text className="text-white text-2xl font-bold tracking-wide">I Have a Craving</Text>
