@@ -61,41 +61,45 @@ export default function CalmingSessionScreen({ navigation }: any) {
     };
   }, []);
 
-  const startBreathingCircle = useCallback(() => {
-    if (voiceEnabled) Speech.speak('Inhale', { rate: 0.9 });
-
-    breathingInterval.current = setInterval(() => {
-      setPhase((prev) => {
-        const next = prev === 'Inhale' ? 'Exhale' : 'Inhale';
-        if (voiceEnabled) Speech.speak(next, { rate: 0.9 });
-
-        scale.value = withTiming(next === 'Inhale' ? 1.5 : 0.9, {
-          duration: BREATH_DURATION / 2,
-        });
-
-        return next;
-      });
-    }, BREATH_DURATION / 2);
-  }, [voiceEnabled]);
-
-  const startBreathingBox = useCallback(() => {
-  if (voiceEnabled) Speech.speak('Inhale', { rate: 0.9 });
+const startBreathingCircle = useCallback(() => {
+  // Start with inhale immediately
   setPhase('Inhale');
+  if (voiceEnabled) Speech.speak('Inhale', { rate: 0.9 });
+  scale.value = withTiming(1.5, { duration: BREATH_DURATION / 2 });
+
+  // Then alternate every breath duration
+  breathingInterval.current = setInterval(() => {
+    setPhase((prev) => {
+      const next = prev === 'Inhale' ? 'Exhale' : 'Inhale';
+      if (voiceEnabled) Speech.speak(next, { rate: 0.9 });
+
+      scale.value = withTiming(next === 'Inhale' ? 1.5 : 0.9, {
+        duration: BREATH_DURATION / 2,
+      });
+
+      return next;
+    });
+  }, BREATH_DURATION / 2);
+}, [voiceEnabled]);
+
+
+const startBreathingBox = useCallback(() => {
+  const steps: ('Inhale' | 'Hold' | 'Exhale' | 'Hold')[] = ['Inhale', 'Hold', 'Exhale', 'Hold'];
+  let step = 0;
+
+  setPhase(steps[step]);
+  if (voiceEnabled) Speech.speak(steps[step], { rate: 0.9 });
+
+  // Start ball loop
   startBoxLoop();
 
-  // Clear any existing interval to prevent overlap
-  if (breathingInterval.current) {
-    clearInterval(breathingInterval.current);
-  }
-
-  const steps: ('Inhale' | 'Hold' | 'Exhale' | 'Hold')[] = ['Inhale', 'Hold', 'Exhale', 'Hold'];
-  let step = 1; // We already started with 'Inhale'
+  // Clear any previous interval
+  if (breathingInterval.current) clearInterval(breathingInterval.current);
 
   breathingInterval.current = setInterval(() => {
-    const next = steps[step % 4];
-    setPhase(next);
-    if (voiceEnabled) Speech.speak(next, { rate: 0.9 });
-    step++;
+    step = (step + 1) % steps.length;
+    setPhase(steps[step]);
+    if (voiceEnabled) Speech.speak(steps[step], { rate: 0.9 });
   }, BREATH_DURATION / 4);
 }, [voiceEnabled]);
 
@@ -106,9 +110,9 @@ export default function CalmingSessionScreen({ navigation }: any) {
 
 
   const startSession = useCallback(() => {
-  // Pick breathing type randomly each session start
-const chosenType = breathingType;
-
+ const types: ('circle' | 'box')[] = ['circle', 'box'];
+  const chosenType = types[Math.floor(Math.random() * types.length)];
+  setBreathingType(chosenType);
 
   setSecondsLeft(SESSION_DURATION);
   setFinished(false);
@@ -204,44 +208,31 @@ const chosenType = breathingType;
     }
   };
 
-  const startBoxLoop = () => {
+const startBoxLoop = () => {
   runOnUI(() => {
     const phaseDur = BREATH_DURATION / 4;
+    const pts = [0.25, 0.5, 0.75, 1]; // 4 edges (we'll reset to 0 at the end)
 
-    const loop = () => {
-      moveAnim.value = withTiming(0.25, { duration: phaseDur }, (fin) => {
-        if (fin) {
-          moveAnim.value = withTiming(0.25, { duration: phaseDur }, () => {
-            moveAnim.value = withTiming(0.5, { duration: phaseDur }, (fin) => {
-              if (fin) {
-                moveAnim.value = withTiming(0.5, { duration: phaseDur }, () => {
-                  moveAnim.value = withTiming(0.75, { duration: phaseDur }, (fin) => {
-                    if (fin) {
-                      moveAnim.value = withTiming(0.75, { duration: phaseDur }, () => {
-                        moveAnim.value = withTiming(1, { duration: phaseDur }, (fin) => {
-                          if (fin) {
-                            moveAnim.value = withTiming(1, { duration: phaseDur }, () => {
-                              // Restart loop
-                              moveAnim.value = 0;
-                              loop();
-                            });
-                          }
-                        });
-                      });
-                    }
-                  });
-                });
-              }
-            });
-          });
-        }
+    const animateSegment = (idx: number) => {
+      if (idx >= pts.length) {
+        // reset to 0 instantly (back to top-left) then start again
+        moveAnim.value = withTiming(0, { duration: 0 }, () => {
+          animateSegment(0);
+        });
+        return;
+      }
+
+      moveAnim.value = withTiming(pts[idx], { duration: phaseDur }, (finished) => {
+        if (finished) animateSegment(idx + 1);
       });
     };
 
-    moveAnim.value = 0;
-    loop();
+    moveAnim.value = withTiming(0, { duration: 0 }, () => {
+      animateSegment(0); // start from top-left -> top-right (0 -> 0.25)
+    });
   })();
 };
+
 
 
   // Circle ball scale style
@@ -295,19 +286,19 @@ const boxBallStyle = useAnimatedStyle(() => {
   });
 
   return (
-    <View className="flex-1 bg-blue-200 pt-20 px-6 pb-8">
+    <View className="flex-1 bg-[#e0f7f6] pt-20 px-6 pb-8">
       {!finished && (
-        <View className="w-full h-2 bg-blue-300 rounded-full mb-4 overflow-hidden">
+        <View className="w-full h-2 bg-[#b3ece8] rounded-full mb-4 overflow-hidden">
           <RNAnimated.View
             style={{ width: progressWidth }}
-            className="h-full bg-blue-700"
+            className="h-full bg-[#08BAAC]"
           />
         </View>
       )}
 
       {!finished && (
         <View className="items-center mb-6">
-          <Text className="text-4xl font-extrabold text-blue-900">
+          <Text className="text-4xl font-extrabold text-[#08BAAC] drop-shadow">
             {secondsLeft}s
           </Text>
         </View>
@@ -318,66 +309,67 @@ const boxBallStyle = useAnimatedStyle(() => {
           {breathingType === 'circle' ? (
             <Animated.View
               style={ballStyle}
-              className="w-48 h-48 rounded-full bg-blue-400 shadow-lg justify-center items-center"
+              className="w-48 h-48 rounded-full bg-[#26c9c0] shadow-lg justify-center items-center border-4 border-[#08BAAC]"
             >
               <View className="absolute inset-0 justify-center items-center">
-                <Text className="text-3xl font-semibold text-blue-800">{phase}</Text>
+                <Text className="text-3xl font-semibold text-[#0d6e67]">{phase}</Text>
               </View>
             </Animated.View>
           ) : (
-          
-<View
-  style={{
-    width: BOX_SIZE,
-    height: BOX_SIZE,
-    borderWidth: BORDER_THICKNESS,
-    borderColor: '#3b82f6',
-    position: 'relative',
-  }}
->
-
-  <Animated.View
-    style={[
-      {
-        position: 'absolute',
-        width: BALL_SIZE,
-        height: BALL_SIZE,
-        borderRadius: BALL_SIZE / 2,
-        backgroundColor: '#2563eb',
-      },
-      boxBallStyle,
-    ]}
-  />
-  <View
-    style={{
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      justifyContent: 'center',
-      alignItems: 'center',
-    }}
-  >
-    <Text style={{ fontSize: 32, fontWeight: '600', color: '#1e40af' }}>
-      {phase}
-    </Text>
-  </View>
-</View>
-          ) }
-
+            <View
+              style={{
+                width: BOX_SIZE,
+                height: BOX_SIZE,
+                borderWidth: BORDER_THICKNESS,
+                borderColor: '#08BAAC',
+                borderRadius: 24,
+                position: 'relative',
+                backgroundColor: '#b3ece8',
+              }}
+            >
+              <Animated.View
+                style={[
+                  {
+                    position: 'absolute',
+                    width: BALL_SIZE,
+                    height: BALL_SIZE,
+                    borderRadius: BALL_SIZE / 2,
+                    backgroundColor: '#08BAAC',
+                    borderWidth: 3,
+                    borderColor: '#26c9c0',
+                  },
+                  boxBallStyle,
+                ]}
+              />
+              <View
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                }}
+              >
+                <Text style={{ fontSize: 32, fontWeight: '600', color: '#0d6e67' }}>
+                  {phase}
+                </Text>
+              </View>
+            </View>
+          )}
         </View>
       )}
 
       {finished && (
         <View className="flex-1 justify-center items-center px-6">
-          <Text className="text-2xl font-semibold text-blue-900 mb-4 text-center">
+          <Text className="text-2xl font-semibold text-[#08BAAC] mb-4 text-center">
             Session Complete 🌿
           </Text>
-          <Text className="text-lg italic text-blue-800 mb-10 text-center">{tip}</Text>
+          <Text className="text-lg italic text-[#0d6e67] mb-10 text-center">{tip}</Text>
           <Pressable
-            className="bg-blue-600 px-10 py-3 rounded-full shadow"
-            onPress={() => navigation.navigate('Stats')}
+            className="bg-[#08BAAC] px-10 py-3 rounded-full shadow"
+            onPress={() => navigation.navigate('CreateCravingForm')}
           >
             <Text className="text-white text-lg font-semibold">Continue</Text>
           </Pressable>
@@ -389,15 +381,15 @@ const boxBallStyle = useAnimatedStyle(() => {
           <View className="flex-row justify-center space-x-4">
             <Pressable
               onPress={finishEarly}
-              className="flex-1 bg-white px-6 py-3 rounded-full border border-blue-500 shadow-sm items-center"
+              className="flex-1 bg-white px-6 py-3 rounded-full border border-[#08BAAC] shadow-sm items-center"
             >
-              <Text className="text-blue-700 font-semibold">Finish Early</Text>
+              <Text className="text-[#08BAAC] font-semibold">Finish Early</Text>
             </Pressable>
 
             <Pressable
               onPress={() => setVoiceEnabled((v) => !v)}
               className={`flex-1 px-6 py-3 rounded-full items-center shadow ${
-                voiceEnabled ? 'bg-blue-600' : 'bg-gray-400'
+                voiceEnabled ? 'bg-[#08BAAC]' : 'bg-gray-400'
               }`}
             >
               <Text className="text-white font-semibold">
@@ -409,7 +401,7 @@ const boxBallStyle = useAnimatedStyle(() => {
           <Pressable
             onPress={paused ? resume : pause}
             className={`w-full py-3 rounded-full items-center shadow ${
-              paused ? 'bg-green-600' : 'bg-yellow-500'
+              paused ? 'bg-[#08BAAC]' : 'bg-[#26c9c0]'
             }`}
           >
             <Text className="text-white text-lg font-semibold">
