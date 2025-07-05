@@ -2,7 +2,7 @@ import React from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import HomeScreen from '../screens/HomeScreen';
 import StatsScreen from '../screens/StatsScreen';
-import HistoryScreen from '../screens/HistoryScreen';
+import CalmingSessionScreen from '../screens/CalmingSessionScreen';
 import { Ionicons } from '@expo/vector-icons';
 
 const Tab = createBottomTabNavigator();
@@ -16,7 +16,7 @@ export default function Tabs() {
 
           if (route.name === 'Home') iconName = 'home';
           else if (route.name === 'Stats') iconName = 'stats-chart';
-          else if (route.name === 'History') iconName = 'time';
+          else if (route.name === 'CalmingSession') iconName = 'leaf-outline';
 
           return <Ionicons name={iconName as any} size={size} color={color} />;
         },
@@ -28,7 +28,7 @@ export default function Tabs() {
     >
       <Tab.Screen name="Home" component={HomeScreen} />
       <Tab.Screen name="Stats" component={StatsScreen} />
-      <Tab.Screen name="History" component={HistoryScreen} />
+      <Tab.Screen name="CalmingSession" component={CalmingSessionScreen} />
     </Tab.Navigator>
   );
 }
