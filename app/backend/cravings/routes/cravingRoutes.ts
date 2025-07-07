@@ -51,6 +51,29 @@ router.post('/', async (req: Request, res: Response): Promise<any> => {
   }
 });
 
-// (Optional) Add more routes (GET by id, DELETE, etc.) if needed here...
+// GET craving by id
+router.get('/:id', async (req: Request, res: Response): Promise<any> => {
+  const id = Number(req.params.id);
+  if (isNaN(id)) {
+    return res.status(400).json({ error: 'Invalid ID' });
+  }
+
+  try {
+    const craving = await prisma.cravingEvent.findUnique({
+      where: { id },
+    });
+
+    if (!craving) {
+      return res.status(404).json({ error: 'Craving not found' });
+    }
+
+    res.json(craving);
+  } catch (error) {
+    console.error("Error in GET /:id", error);
+    res.status(500).json({ error: 'Failed to fetch craving' });
+  }
+});
+
+
 
 export default router;
