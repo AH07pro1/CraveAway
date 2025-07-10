@@ -101,9 +101,12 @@ export default function CreateCravingForm({ navigation }: any) {
       className="flex-1"
       style={{ backgroundColor: colors.background }}
     >
-      <ScrollView contentContainerStyle={{ flexGrow: 1 }} className="p-6">
+      <ScrollView
+        contentContainerStyle={{ flexGrow: 1, paddingTop: 48 }}
+        className="p-6"
+      >
         <Text
-          className="text-3xl font-bold mt-4 mb-6 text-center"
+          className="text-3xl font-bold mb-6 text-center"
           style={{ color: colors.primary }}
         >
           Create Craving Event
@@ -182,7 +185,11 @@ export default function CreateCravingForm({ navigation }: any) {
         </Text>
         <View
           className="border rounded-md mb-6"
-          style={{ overflow: "hidden", borderColor: colors.border, backgroundColor: colors.background }}
+          style={{
+            overflow: "hidden",
+            borderColor: colors.border,
+            backgroundColor: colors.background,
+          }}
         >
           <Picker
             selectedValue={type}
@@ -204,9 +211,7 @@ export default function CreateCravingForm({ navigation }: any) {
         <Pressable
           onPress={handleSubmit}
           disabled={isSubmitting}
-          className={`rounded-md py-3 ${
-            isSubmitting ? "opacity-50" : ""
-          }`}
+          className={`rounded-md py-3 ${isSubmitting ? "opacity-50" : ""}`}
           style={{ backgroundColor: colors.primary }}
         >
           <Text className="text-white text-center font-bold text-lg">

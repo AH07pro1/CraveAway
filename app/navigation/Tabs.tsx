@@ -6,6 +6,8 @@ import CalmingStack from './CalmingStack'; // 👈 use the stack here
 import { Ionicons } from '@expo/vector-icons';
 import CravingListScreen from '../screens/CravingListScreen';
 import CravingDetailScreen from '../screens/CravingDetailScreen';
+import StreakDetailScreen from  '../screens/StreakDetailScreen';
+import MonthlyStatsScreen from '../screens/MonthlyStatsScreen';
 
 const Tab = createBottomTabNavigator();
 
@@ -31,13 +33,19 @@ export default function Tabs() {
     >
       <Tab.Screen name="Home" component={HomeScreen} />
       <Tab.Screen name="Stats" component={StatsScreen} />
-      <Tab.Screen name="Calming" component={CalmingStack} />
+      <Tab.Screen name="Calming" component={CalmingStack} options={{ tabBarButton: () => null }} />
       <Tab.Screen name="CravingList" component={CravingListScreen} />
       <Tab.Screen
         name="CravingDetail"
         component={CravingDetailScreen}
         options={{ tabBarButton: () => null }}
       />
+       <Tab.Screen
+        name="StreakDetails"
+        component={StreakDetailScreen}
+        options={{ tabBarButton: () => null }}
+      />
+      <Tab.Screen name="MonthlyStats" component={MonthlyStatsScreen} options={{ tabBarButton: () => null }}/>
     </Tab.Navigator>
   );
 }

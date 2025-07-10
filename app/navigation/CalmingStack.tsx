@@ -16,7 +16,7 @@ export default function CalmingStack() {
       <Stack.Screen
         name="CreateCravingForm"
         component={CreateCravingForm}
-        options={{ title: 'Create Craving' }}
+        options={{ title: 'Create Craving', headerShown: false }}
       />
     </Stack.Navigator>
   );
