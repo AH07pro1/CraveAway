@@ -9,7 +9,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
-import colors from "../utils/colors"; // adjust the path as needed
+import colors from "../utils/colors";
 
 type CravingEvent = {
   id: number;
@@ -17,8 +17,11 @@ type CravingEvent = {
   intensity?: number;
   notes?: string;
   resolved: boolean;
-  type: string;
+  type?: {
+    name: string;
+  } | null;
 };
+
 
 type FilterType = "all" | "week" | "month" | "year";
 
@@ -27,6 +30,18 @@ const filterLabels: Record<FilterType, string> = {
   week: "This Week",
   month: "This Month",
   year: "This Year",
+};
+
+const cravingIcons: Record<string, string> = {
+  food: "🍔",
+  smoke: "🚬",
+  drink: "🍷",
+  cigarette: "🚭",
+  vape: "💨",
+  weed: "🌿",
+  cocaine: "❄️",
+  heroin: "💉",
+  other: "❓",
 };
 
 export default function CravingListScreen({ navigation }: any) {
@@ -64,7 +79,6 @@ export default function CravingListScreen({ navigation }: any) {
     }, [])
   );
 
-  // Date boundaries for filtering
   const now = new Date();
   const startOfWeek = new Date(now);
   startOfWeek.setDate(now.getDate() - now.getDay());
@@ -79,6 +93,10 @@ export default function CravingListScreen({ navigation }: any) {
     return true;
   });
 
+  const sortedCravings = [...filteredCravings].sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  );
+
   if (loading) {
     return (
       <SafeAreaView className="flex-1 justify-center items-center" style={{ backgroundColor: colors.background }}>
@@ -88,7 +106,7 @@ export default function CravingListScreen({ navigation }: any) {
   }
 
   return (
-    <SafeAreaView className="flex-1 p-4" style={{ backgroundColor: colors.background }}>
+    <SafeAreaView className="flex-1 px-4 pb-4" style={{ backgroundColor: colors.background }}>
       {/* Filter Buttons */}
       <View className="flex-row justify-around mb-4">
         {(["all", "week", "month", "year"] as FilterType[]).map((f) => {
@@ -105,7 +123,7 @@ export default function CravingListScreen({ navigation }: any) {
             >
               <Text
                 className="font-semibold"
-                style={{ color: isActive ? colors.textMain: colors.textSecondary }}
+                style={{ color: isActive ? colors.textMain : colors.textSecondary }}
               >
                 {filterLabels[f]}
               </Text>
@@ -114,43 +132,73 @@ export default function CravingListScreen({ navigation }: any) {
         })}
       </View>
 
-      {/* Fixed Title */}
-      <Text
-        className="text-3xl font-bold text-center mb-6"
-        style={{ color: colors.primary }}
-      >
+      {/* Title */}
+      <Text className="text-3xl font-bold text-center mb-6" style={{ color: colors.primary }}>
         Craving History
       </Text>
 
-      {/* Scrollable List */}
+      {/* List */}
       <ScrollView
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.primary}
+          />
+        }
       >
-        {filteredCravings.length === 0 ? (
-          <Text className="text-center" style={{ color: colors.textSecondary}}>
-            No cravings found.
+        {sortedCravings.length === 0 ? (
+          <Text className="text-center mt-12 text-base italic" style={{ color: colors.textSecondary }}>
+            No cravings found. That’s a win! 🎉
           </Text>
         ) : (
-          filteredCravings.map((craving) => (
+          sortedCravings.map((craving) => (
             <Pressable
               key={craving.id}
               onPress={() => navigation.navigate("CravingDetail", { id: craving.id })}
-              className="rounded-xl p-4 mb-4 shadow-md border"
-              style={{ backgroundColor: "white", borderColor: colors.primary }}
+              className="rounded-2xl p-4 mb-4 border shadow-md active:opacity-80"
+              style={{
+                backgroundColor: colors.accentLight|| "#F1F5F9",
+                borderColor: colors.primary,
+                shadowColor: "#000",
+                shadowOpacity: 0.1,
+                shadowRadius: 8,
+                shadowOffset: { width: 0, height: 3 },
+                elevation: 3,
+              }}
             >
-              <Text className="text-lg font-bold capitalize" style={{ color: "#0d6e67" }}>
-                {craving.type}
-              </Text>
-              <Text className="text-sm" style={{ color: colors.textSecondary }}>
-                Intensity: {craving.intensity ?? "N/A"}
-              </Text>
-              <Text className="text-sm" style={{ color: colors.textSecondary }}>
+             <Text className="text-lg font-bold capitalize mb-1" style={{ color: "#0d6e67" }}>
+  {cravingIcons[craving.type?.name ?? "other"] || "🌀"} {craving.type?.name ?? "Unknown"}
+</Text>
+
+
+              <Text className="text-sm mb-1" style={{ color: colors.textSecondary }}>
                 Notes: {craving.notes || "None"}
               </Text>
-              <Text className="text-sm" style={{ color: colors.textSecondary }}>
-                Resolved: {craving.resolved ? "Yes" : "No"}
+
+              <Text
+                className="text-sm font-semibold mb-1"
+                style={{ color: craving.resolved ? "#22c55e" : "#ef4444" }}
+              >
+                {craving.resolved ? "You stayed strong 💪" : "You gave in 😞"}
               </Text>
-              <Text className="text-xs mt-1" style={{ color: "#94a3b8" }}>
+
+              <View className="flex-row mb-2">
+                <Text className="text-sm mr-2" style={{ color: colors.textSecondary }}>
+                  Intensity:
+                </Text>
+                <View className="flex-row items-center">
+                  {Array.from({ length: craving.intensity || 0 }).map((_, i) => (
+                    <View
+                      key={i}
+                      className="w-2 h-2 rounded-full mr-1"
+                      style={{ backgroundColor: "#f97316" }}
+                    />
+                  ))}
+                </View>
+              </View>
+
+              <Text className="text-xs" style={{ color: "#94a3b8" }}>
                 {new Date(craving.createdAt).toLocaleString()}
               </Text>
             </Pressable>

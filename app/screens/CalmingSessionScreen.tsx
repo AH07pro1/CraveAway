@@ -9,7 +9,7 @@ import Animated, {
 } from "react-native-reanimated";
 import * as Speech from "expo-speech";
 import { useFocusEffect } from "@react-navigation/native";
-import colors from "../utils/colors"; // adjust the path if needed
+import colors from "../utils/colors";
 
 const SESSION_DURATION = 60;
 const BREATH_DURATION = 16000;
@@ -27,7 +27,6 @@ const BALL_SIZE = 48;
 
 export default function CalmingSessionScreen({ navigation }: any) {
   const [secondsLeft, setSecondsLeft] = useState(SESSION_DURATION);
-  const [finished, setFinished] = useState(false);
   const [phase, setPhase] = useState<"Inhale" | "Exhale" | "Hold">("Inhale");
 
   const [paused, setPaused] = useState(false);
@@ -43,14 +42,13 @@ export default function CalmingSessionScreen({ navigation }: any) {
   const breathingInterval = useRef<NodeJS.Timeout | null>(null);
   const timerInterval = useRef<NodeJS.Timeout | null>(null);
 
+  const voiceRef = useRef(voiceEnabled);
   useEffect(() => {
-    setTip(tips[Math.floor(Math.random() * tips.length)]);
-  }, []);
+    voiceRef.current = voiceEnabled;
+  }, [voiceEnabled]);
 
   useEffect(() => {
-    // Choose random breathing type on mount
-    const types: ("circle" | "box")[] = ["circle", "box"];
-    setBreathingType(types[Math.floor(Math.random() * types.length)]);
+    setTip(tips[Math.floor(Math.random() * tips.length)]);
   }, []);
 
   useEffect(() => {
@@ -62,13 +60,13 @@ export default function CalmingSessionScreen({ navigation }: any) {
 
   const startBreathingCircle = useCallback(() => {
     setPhase("Inhale");
-    if (voiceEnabled) Speech.speak("Inhale", { rate: 0.9 });
+    if (voiceRef.current) Speech.speak("Inhale", { rate: 0.9 });
     scale.value = withTiming(1.5, { duration: BREATH_DURATION / 2 });
 
     breathingInterval.current = setInterval(() => {
       setPhase((prev) => {
         const next = prev === "Inhale" ? "Exhale" : "Inhale";
-        if (voiceEnabled) Speech.speak(next, { rate: 0.9 });
+        if (voiceRef.current) Speech.speak(next, { rate: 0.9 });
 
         scale.value = withTiming(next === "Inhale" ? 1.5 : 0.9, {
           duration: BREATH_DURATION / 2,
@@ -77,7 +75,39 @@ export default function CalmingSessionScreen({ navigation }: any) {
         return next;
       });
     }, BREATH_DURATION / 2);
-  }, [voiceEnabled]);
+  }, []);
+
+  const startBoxLoop = () => {
+    runOnUI(() => {
+      const phaseDur = BREATH_DURATION / 4;
+      const pts = [0.25, 0.5, 0.75, 1];
+
+      const getNextIndex = (progress: number) => {
+        for (let i = 0; i < pts.length; i++) {
+          if (progress < pts[i]) return i;
+        }
+        return 0;
+      };
+
+      const animateSegment = (idx: number) => {
+        if (idx >= pts.length) {
+          moveAnim.value = withTiming(0, { duration: 0 }, () => {
+            animateSegment(0);
+          });
+          return;
+        }
+
+        moveAnim.value = withTiming(pts[idx], { duration: phaseDur }, (finished) => {
+          if (finished) animateSegment(idx + 1);
+        });
+      };
+
+      const currentProgress = moveAnim.value;
+      const currentIdx = getNextIndex(currentProgress);
+
+      animateSegment(currentIdx);
+    })();
+  };
 
   const startBreathingBox = useCallback(() => {
     const steps: ("Inhale" | "Hold" | "Exhale" | "Hold")[] = [
@@ -89,7 +119,7 @@ export default function CalmingSessionScreen({ navigation }: any) {
     let step = 0;
 
     setPhase(steps[step]);
-    if (voiceEnabled) Speech.speak(steps[step], { rate: 0.9 });
+    if (voiceRef.current) Speech.speak(steps[step], { rate: 0.9 });
 
     startBoxLoop();
 
@@ -98,9 +128,9 @@ export default function CalmingSessionScreen({ navigation }: any) {
     breathingInterval.current = setInterval(() => {
       step = (step + 1) % steps.length;
       setPhase(steps[step]);
-      if (voiceEnabled) Speech.speak(steps[step], { rate: 0.9 });
+      if (voiceRef.current) Speech.speak(steps[step], { rate: 0.9 });
     }, BREATH_DURATION / 4);
-  }, [voiceEnabled]);
+  }, []);
 
   const startSession = useCallback(() => {
     const types: ("circle" | "box")[] = ["circle", "box"];
@@ -108,7 +138,6 @@ export default function CalmingSessionScreen({ navigation }: any) {
     setBreathingType(chosenType);
 
     setSecondsLeft(SESSION_DURATION);
-    setFinished(false);
     setPaused(false);
     setPhase("Inhale");
 
@@ -122,8 +151,7 @@ export default function CalmingSessionScreen({ navigation }: any) {
     if (chosenType === "circle") {
       scale.value = withTiming(1.5, { duration: BREATH_DURATION / 2 });
       startBreathingCircle();
-    } else if (chosenType === "box") {
-      moveAnim.value = 0;
+    } else {
       startBreathingBox();
     }
 
@@ -133,13 +161,13 @@ export default function CalmingSessionScreen({ navigation }: any) {
           clearInterval(timerInterval.current!);
           clearInterval(breathingInterval.current!);
           Speech.stop();
-          setFinished(true);
+          navigation.replace("SessionComplete");
           return 0;
         }
         return prev - 1;
       });
     }, 1000);
-  }, [startBreathingCircle, startBreathingBox]);
+  }, [startBreathingCircle, startBreathingBox, navigation, progressAnim, scale]);
 
   useFocusEffect(
     useCallback(() => {
@@ -157,8 +185,7 @@ export default function CalmingSessionScreen({ navigation }: any) {
     clearInterval(breathingInterval.current!);
     Speech.stop();
     RNAnimated.timing(progressAnim).stop();
-    setFinished(true);
-    setSecondsLeft(0);
+    navigation.replace("SessionComplete");
   };
 
   const pause = () => {
@@ -180,7 +207,7 @@ export default function CalmingSessionScreen({ navigation }: any) {
           clearInterval(timerInterval.current!);
           clearInterval(breathingInterval.current!);
           Speech.stop();
-          setFinished(true);
+          navigation.replace("SessionComplete");
           return 0;
         }
         return prev - 1;
@@ -195,33 +222,9 @@ export default function CalmingSessionScreen({ navigation }: any) {
 
     if (breathingType === "circle") {
       startBreathingCircle();
-    } else if (breathingType === "box") {
+    } else {
       startBreathingBox();
     }
-  };
-
-  const startBoxLoop = () => {
-    runOnUI(() => {
-      const phaseDur = BREATH_DURATION / 4;
-      const pts = [0.25, 0.5, 0.75, 1]; // 4 edges
-
-      const animateSegment = (idx: number) => {
-        if (idx >= pts.length) {
-          moveAnim.value = withTiming(0, { duration: 0 }, () => {
-            animateSegment(0);
-          });
-          return;
-        }
-
-        moveAnim.value = withTiming(pts[idx], { duration: phaseDur }, (finished) => {
-          if (finished) animateSegment(idx + 1);
-        });
-      };
-
-      moveAnim.value = withTiming(0, { duration: 0 }, () => {
-        animateSegment(0);
-      });
-    })();
   };
 
   const ballStyle = useAnimatedStyle(() => ({
@@ -266,12 +269,11 @@ export default function CalmingSessionScreen({ navigation }: any) {
     outputRange: ["0%", "100%"],
   });
 
-return (
-  <View
-    className="flex-1 pt-20 px-6 pb-8"
-    style={{ backgroundColor: colors.background }}
-  >
-    {!finished && (
+  return (
+    <View
+      className="flex-1 pt-20 px-6 pb-8"
+      style={{ backgroundColor: colors.background }}
+    >
       <View
         className="w-full h-2 rounded-full mb-4 overflow-hidden"
         style={{ backgroundColor: colors.accentLight }}
@@ -281,9 +283,7 @@ return (
           className="h-full"
         />
       </View>
-    )}
 
-    {!finished && (
       <View className="items-center mb-6">
         <Text
           className="text-4xl font-extrabold drop-shadow"
@@ -292,9 +292,7 @@ return (
           {secondsLeft}s
         </Text>
       </View>
-    )}
 
-    {!finished && (
       <View className="flex-1 justify-center items-center relative">
         {breathingType === "circle" ? (
           <Animated.View
@@ -302,7 +300,7 @@ return (
             style={[
               ballStyle,
               {
-                backgroundColor: colors.accentLight,  // softer bg for circle
+                backgroundColor: colors.accentLight,
                 borderColor: colors.primary,
               },
             ]}
@@ -322,10 +320,10 @@ return (
               width: BOX_SIZE,
               height: BOX_SIZE,
               borderWidth: BORDER_THICKNESS,
-              borderColor: colors.border, // softer border color
+              borderColor: colors.border,
               borderRadius: 24,
               position: "relative",
-              backgroundColor: colors.accentLight, // softer box bg
+              backgroundColor: colors.accentLight,
             }}
           >
             <Animated.View
@@ -362,33 +360,7 @@ return (
           </View>
         )}
       </View>
-    )}
 
-    {finished && (
-      <View className="flex-1 justify-center items-center px-6">
-        <Text
-          className="text-2xl font-semibold mb-4 text-center"
-          style={{ color: colors.primary }}
-        >
-          Session Complete 🌿
-        </Text>
-        <Text
-          className="text-lg italic mb-10 text-center"
-          style={{ color: colors.textMain }}
-        >
-          {tip}
-        </Text>
-        <Pressable
-          className="px-10 py-3 rounded-full shadow"
-          style={{ backgroundColor: colors.primary }}
-          onPress={() => navigation.navigate("CreateCravingForm")}
-        >
-          <Text className="text-white text-lg font-semibold">Continue</Text>
-        </Pressable>
-      </View>
-    )}
-
-    {!finished && (
       <View className="space-y-4 mt-8">
         <View className="flex-row justify-center space-x-4">
           <Pressable
@@ -426,7 +398,6 @@ return (
           </Text>
         </Pressable>
       </View>
-    )}
-  </View>
-);
+    </View>
+  );
 }

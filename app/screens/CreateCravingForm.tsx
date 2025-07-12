@@ -1,82 +1,101 @@
-import React, { useState } from "react";
+import { useFocusEffect } from '@react-navigation/native';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
   TextInput,
   Pressable,
-  ScrollView,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
   Alert,
 } from "react-native";
 import Slider from "@react-native-community/slider";
 import { Picker } from "@react-native-picker/picker";
-import colors from "../utils/colors"; // adjust the path as needed
+import colors from "../utils/colors";
 
-const cravingTypes = [
-  "food",
-  "smoke",
-  "drink",
-  "cigarette",
-  "vape",
-  "weed",
-  "cocaine",
-  "heroin",
-  "other",
-];
+type CravingType = { name: string; isCustom: boolean };
 
 export default function CreateCravingForm({ navigation }: any) {
+  const [step, setStep] = useState(1);
   const [intensity, setIntensity] = useState("5");
   const [notes, setNotes] = useState("");
-  const [resolved, setResolved] = useState(false);
-  const [type, setType] = useState(cravingTypes[0]);
+  const [resolved, setResolved] = useState(true);
+  const [type, setType] = useState("");
+  const [cravingTypes, setCravingTypes] = useState<CravingType[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const totalSteps = 4;
 
   const isAllDefault =
     intensity === "5" &&
     notes.trim() === "" &&
-    resolved === false &&
-    type === cravingTypes[0];
+    resolved === true &&
+    type === (cravingTypes.length > 0 ? cravingTypes[0].name : "");
 
-  const submitData = async () => {
-    setIsSubmitting(true);
-    try {
-      const response = await fetch("http://192.168.2.19:3000/api/craving", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          intensity: Number(intensity),
-          notes,
-          resolved,
-          type,
-        }),
-      });
+    useFocusEffect(
+  useCallback(() => {
+    setStep(1);
+  }, [])
+);
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error("Server error:", errorData);
-        Alert.alert("Error", "Failed to submit craving.");
-        return;
+  useEffect(() => {
+    const fetchCravingTypes = async () => {
+      try {
+        const res = await fetch("http://192.168.2.19:3000/api/craving-types");
+        const data: CravingType[] = await res.json();
+        setCravingTypes(data);
+        if (data.length > 0) setType(data[0].name);
+      } catch (err) {
+        console.error("Failed to fetch craving types:", err);
+        Alert.alert("Error", "Unable to load craving types.");
       }
+    };
 
-      const result = await response.json();
-      console.log("Craving created:", result);
+    fetchCravingTypes();
+  }, []);
 
-      setIntensity("5");
-      setNotes("");
-      setResolved(false);
-      setType(cravingTypes[0]);
+const submitData = async () => {
+  setIsSubmitting(true);
+  try {
+    const response = await fetch("http://192.168.2.19:3000/api/craving", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        intensity: Number(intensity), // number between 1-10
+        notes,
+        resolved,
+        type, // string, can be default or custom
+      }),
+    });
 
-      navigation.navigate("CravingList");
-    } catch (err) {
-      console.error("Network error:", err);
-      Alert.alert("Error", "Network error occurred.");
-    } finally {
-      setIsSubmitting(false);
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error("Server error:", errorData);
+      Alert.alert("Error", "Failed to submit craving.");
+      return;
     }
-  };
+
+    const result = await response.json();
+    console.log("Craving created:", result);
+
+    // Reset form after successful submission
+    setIntensity("5");
+    setNotes("");
+    setResolved(true);
+    setStep(1);
+    if (cravingTypes.length > 0) setType(cravingTypes[0].name);
+
+    navigation.navigate("CravingList");
+  } catch (err) {
+    console.error("Network error:", err);
+    Alert.alert("Error", "Network error occurred.");
+  } finally {
+    setIsSubmitting(false);
+  }
+};
+
+
 
   const handleSubmit = () => {
     if (isSubmitting) return;
@@ -84,7 +103,7 @@ export default function CreateCravingForm({ navigation }: any) {
     if (isAllDefault) {
       Alert.alert(
         "Confirm submission",
-        "You are submitting the default values. Do you want to continue?",
+        "You are submitting default values. If you're sure, please fill in some details.",
         [
           { text: "Cancel", style: "cancel" },
           { text: "Submit", onPress: submitData },
@@ -95,6 +114,195 @@ export default function CreateCravingForm({ navigation }: any) {
     }
   };
 
+  const StepCard = () => {
+    switch (step) {
+      case 1:
+        return (
+          <View
+            className="bg-[#E9EBF8] rounded-2xl p-5 mb-6 shadow-md"
+            style={{
+              shadowColor: "#000",
+              shadowOpacity: 0.1,
+              shadowRadius: 8,
+              shadowOffset: { width: 0, height: 3 },
+              elevation: 5,
+            }}
+          >
+            <Text
+              className="text-base italic mb-1 text-center"
+              style={{ color: colors.textSecondary }}
+            >
+              What kind of craving was it? 🍃
+            </Text>
+            <Text
+              className="text-lg font-semibold mb-2 text-center"
+              style={{ color: colors.textMain }}
+            >
+              Type
+            </Text>
+            <View
+              className="rounded-xl overflow-hidden border"
+              style={{
+                borderColor: colors.border,
+                backgroundColor: colors.background,
+              }}
+            >
+              {cravingTypes.length === 0 ? (
+                <Text className="text-center text-gray-400 py-3">
+                  Loading types...
+                </Text>
+              ) : (
+                <Picker
+                  selectedValue={type}
+                  onValueChange={(itemValue) => setType(itemValue)}
+                  dropdownIconColor={colors.primary}
+                  style={{ color: colors.primary }}
+                >
+                  {cravingTypes.map((item) => (
+                    <Picker.Item
+                      key={item.name}
+                      label={
+                        item.name.charAt(0).toUpperCase() +
+                        item.name.slice(1) +
+                        (item.isCustom ? " (Custom)" : "")
+                      }
+                      value={item.name}
+                    />
+                  ))}
+                </Picker>
+              )}
+            </View>
+          </View>
+        );
+      case 2:
+        return (
+          <View
+            className="bg-[#E9EBF8] rounded-2xl p-5 mb-6 shadow-md"
+            style={{
+              shadowColor: "#000",
+              shadowOpacity: 0.1,
+              shadowRadius: 8,
+              shadowOffset: { width: 0, height: 3 },
+              elevation: 5,
+            }}
+          >
+            <Text
+              className="text-base italic mb-1 text-center"
+              style={{ color: colors.textSecondary }}
+            >
+              How strong was the craving? 🔥
+            </Text>
+            <Text
+              className="text-lg font-semibold mb-3 text-center"
+              style={{ color: colors.textMain }}
+            >
+              Intensity: {intensity}
+            </Text>
+            <Slider
+              style={{ width: "100%", height: 40 }}
+              minimumValue={1}
+              maximumValue={10}
+              step={1}
+              value={+intensity}
+              onValueChange={(val) => setIntensity(val.toString())}
+              minimumTrackTintColor={colors.primary}
+              maximumTrackTintColor={colors.border}
+              thumbTintColor={colors.primary}
+            />
+          </View>
+        );
+      case 3:
+        return (
+          <View
+            className="bg-[#E9EBF8] rounded-2xl p-5 mb-6 shadow-md"
+            style={{
+              shadowColor: "#000",
+              shadowOpacity: 0.1,
+              shadowRadius: 8,
+              shadowOffset: { width: 0, height: 3 },
+              elevation: 5,
+            }}
+          >
+            <Text
+              className="text-base italic mb-1 text-center"
+              style={{ color: colors.textSecondary }}
+            >
+              What was going on around you? 🧠
+            </Text>
+            <Text
+              className="text-lg font-semibold mb-2"
+              style={{ color: colors.textMain }}
+            >
+              Trigger or Thoughts
+            </Text>
+            <TextInput
+              value={notes}
+              onChangeText={setNotes}
+              placeholder="What triggered it?"
+              placeholderTextColor={colors.textSecondary}
+              multiline
+              numberOfLines={4}
+              className="rounded-xl px-4 py-3"
+              style={{
+                borderColor: colors.border,
+                backgroundColor: colors.background,
+                color: colors.textMain,
+                textAlignVertical: "top",
+                borderWidth: 1,
+              }}
+            />
+          </View>
+        );
+      case 4:
+        return (
+          <View
+            className="bg-[#E9EBF8] rounded-2xl p-5 mb-6 shadow-md flex-row items-center justify-between"
+            style={{
+              shadowColor: "#000",
+              shadowOpacity: 0.1,
+              shadowRadius: 8,
+              shadowOffset: { width: 0, height: 3 },
+              elevation: 5,
+            }}
+          >
+            <View>
+              <Text
+                className="text-base italic mb-1"
+                style={{ color: colors.textSecondary }}
+              >
+                Did you give in to the craving?
+              </Text>
+              <Text
+                className="text-lg font-semibold"
+                style={{ color: colors.textMain }}
+              >
+                {resolved ? "No, I stayed strong 💪" : "Yes, I gave in 😞"}
+              </Text>
+            </View>
+
+            <Pressable
+              onPress={() => setResolved((prev) => !prev)}
+              className={`w-14 h-8 rounded-full ${
+                resolved ? "bg-[#4BB543]" : "bg-[#FF6B6B]"
+              }`}
+              style={{
+                justifyContent: "center",
+                padding: 2,
+              }}
+            >
+              <View
+                className={`w-7 h-7 bg-white rounded-full shadow-md transform ${
+                  resolved ? "translate-x-6" : "translate-x-1"
+                }`}
+              />
+            </Pressable>
+          </View>
+        );
+      default:
+        return null;
+    }
+  };
+
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -102,122 +310,63 @@ export default function CreateCravingForm({ navigation }: any) {
       style={{ backgroundColor: colors.background }}
     >
       <ScrollView
-        contentContainerStyle={{ flexGrow: 1, paddingTop: 48 }}
-        className="p-6"
+        contentContainerStyle={{ flexGrow: 1, justifyContent: "center", paddingVertical: 48 }}
+        className="px-6"
       >
-        <Text
-          className="text-3xl font-bold mb-6 text-center"
-          style={{ color: colors.primary }}
-        >
-          Create Craving Event
-        </Text>
-
-        {/* Intensity */}
-        <Text
-          className="text-lg font-semibold mb-1"
-          style={{ color: colors.textMain }}
-        >
-          Intensity: {intensity}
-        </Text>
-        <Slider
-          style={{ width: "100%", height: 40 }}
-          minimumValue={1}
-          maximumValue={10}
-          step={1}
-          value={+intensity}
-          onValueChange={(val) => setIntensity(val.toString())}
-          minimumTrackTintColor={colors.primary}
-          maximumTrackTintColor={colors.border}
-          thumbTintColor={colors.primary}
-        />
-
-        {/* Notes */}
-        <Text
-          className="text-lg font-semibold mt-6 mb-1"
-          style={{ color: colors.textMain }}
-        >
-          Notes (trigger)
-        </Text>
-        <TextInput
-          value={notes}
-          onChangeText={setNotes}
-          placeholder="What triggered it?"
-          placeholderTextColor={colors.textSecondary}
-          multiline
-          numberOfLines={4}
-          className="border rounded-md px-4 py-2 mb-4"
-          style={{
-            borderColor: colors.border,
-            backgroundColor: colors.background,
-            color: colors.textMain,
-            textAlignVertical: "top",
-          }}
-        />
-
-        {/* Resolved */}
-        <View className="flex-row items-center mb-4 mt-2">
+        <View className="mb-8 items-center">
           <Text
-            className="text-lg font-semibold mr-4"
-            style={{ color: colors.textMain }}
-          >
-            Resolved?
-          </Text>
-          <Pressable
-            onPress={() => setResolved((prev) => !prev)}
-            className={`w-12 h-6 rounded-full ${
-              resolved ? "bg-[#3A86FF]" : "bg-gray-300"
-            }`}
-          >
-            <View
-              className={`w-5 h-5 bg-white rounded-full shadow-md transform ${
-                resolved ? "translate-x-6" : "translate-x-1"
-              }`}
-            />
-          </Pressable>
-        </View>
-
-        {/* Type Dropdown */}
-        <Text
-          className="text-lg font-semibold mb-1"
-          style={{ color: colors.textMain }}
-        >
-          Type
-        </Text>
-        <View
-          className="border rounded-md mb-6"
-          style={{
-            overflow: "hidden",
-            borderColor: colors.border,
-            backgroundColor: colors.background,
-          }}
-        >
-          <Picker
-            selectedValue={type}
-            onValueChange={(itemValue) => setType(itemValue)}
-            dropdownIconColor={colors.primary}
+            className="text-3xl font-extrabold mb-1 text-center"
             style={{ color: colors.primary }}
           >
-            {cravingTypes.map((item) => (
-              <Picker.Item
-                label={item.charAt(0).toUpperCase() + item.slice(1)}
-                value={item}
-                key={item}
-              />
-            ))}
-          </Picker>
+            Let's log what just happened 💬
+          </Text>
+          <Text
+            className="text-base text-center"
+            style={{ color: colors.textSecondary }}
+          >
+            No pressure. Just a few quick notes to help you understand your cravings better.
+          </Text>
         </View>
 
-        {/* Submit button */}
-        <Pressable
-          onPress={handleSubmit}
-          disabled={isSubmitting}
-          className={`rounded-md py-3 ${isSubmitting ? "opacity-50" : ""}`}
-          style={{ backgroundColor: colors.primary }}
-        >
-          <Text className="text-white text-center font-bold text-lg">
-            {isSubmitting ? "Submitting..." : "Submit"}
-          </Text>
-        </Pressable>
+        <StepCard />
+
+        <View className="flex-row justify-between mt-4">
+          {step > 1 ? (
+            <Pressable
+              onPress={() => setStep(step - 1)}
+              className="rounded-3xl py-3 px-8 border border-gray-300"
+            >
+              <Text style={{ color: colors.primary, fontWeight: "600" }}>
+                Back
+              </Text>
+            </Pressable>
+          ) : (
+            <View style={{ width: 100 }} />
+          )}
+
+          {step < totalSteps ? (
+            <Pressable
+              onPress={() => setStep(step + 1)}
+              className="rounded-3xl py-3 px-8"
+              style={{ backgroundColor: colors.primary }}
+            >
+              <Text className="text-white font-bold">Next</Text>
+            </Pressable>
+          ) : (
+            <Pressable
+              onPress={handleSubmit}
+              disabled={isSubmitting}
+              className={`rounded-3xl py-3 px-8 ${
+                isSubmitting ? "opacity-50" : ""
+              }`}
+              style={{ backgroundColor: colors.primary }}
+            >
+              <Text className="text-white font-bold">
+                {isSubmitting ? "Saving..." : "Done! Save this moment"}
+              </Text>
+            </Pressable>
+          )}
+        </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );

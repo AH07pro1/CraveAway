@@ -30,11 +30,40 @@ export default function StatsScreen({ navigation }: any) {
     return dates;
   }
 
+  // New streak calculation function as you requested
+  function calculateStreak(data: any[]) {
+    const gaveInByDate: { [date: string]: boolean } = {};
+
+    data.forEach(c => {
+      const date = format(parseISO(c.createdAt), 'yyyy-MM-dd');
+      if (!c.resolved) {
+        gaveInByDate[date] = true;
+      }
+    });
+
+    let streakCount = 0;
+    let dayCursor = new Date();
+
+    while (true) {
+      const dayStr = format(dayCursor, 'yyyy-MM-dd');
+
+      if (gaveInByDate[dayStr]) break;
+
+      streakCount++;
+      dayCursor.setDate(dayCursor.getDate() - 1);
+
+      if (streakCount > 365) break; // safety limit
+    }
+
+    return streakCount;
+  }
+
   useEffect(() => {
     const fetchCravings = async () => {
       try {
         const res = await fetch('http://192.168.2.19:3000/api/craving');
         const data = await res.json();
+        console.log('Fetched cravings:', data);
         setCravings(data);
 
         const counts: { [date: string]: number } = {};
@@ -61,24 +90,7 @@ export default function StatsScreen({ navigation }: any) {
         setResistCount(resist);
         setGaveInCount(gaveIn);
 
-        const gaveInByDate: { [date: string]: boolean } = {};
-        data.forEach((c: any) => {
-          const date = format(parseISO(c.createdAt), 'yyyy-MM-dd');
-          if (!c.resolved) gaveInByDate[date] = true;
-        });
-
-        const today = format(new Date(), 'yyyy-MM-dd');
-        let currentStreak = 0;
-        let dayCursor = new Date(today);
-
-        while (true) {
-          const dayStr = format(dayCursor, 'yyyy-MM-dd');
-          if (gaveInByDate[dayStr]) break;
-          currentStreak++;
-          dayCursor.setDate(dayCursor.getDate() - 1);
-          if (currentStreak > 30) break;
-        }
-
+        const currentStreak = calculateStreak(data);
         setStreak(currentStreak);
       } catch (error) {
         console.error('Failed to fetch cravings', error);
@@ -102,7 +114,10 @@ export default function StatsScreen({ navigation }: any) {
 
   if (loading) {
     return (
-      <SafeAreaView className="flex-1 justify-center items-center" style={{ backgroundColor: colors.background }}>
+      <SafeAreaView
+        className="flex-1 justify-center items-center"
+        style={{ backgroundColor: colors.background }}
+      >
         <ActivityIndicator size="large" color={colors.primary} />
       </SafeAreaView>
     );
@@ -110,7 +125,10 @@ export default function StatsScreen({ navigation }: any) {
 
   if (cravings.length === 0) {
     return (
-      <SafeAreaView className="flex-1 justify-center items-center px-4" style={{ backgroundColor: colors.background }}>
+      <SafeAreaView
+        className="flex-1 justify-center items-center px-4"
+        style={{ backgroundColor: colors.background }}
+      >
         <Text className="text-lg" style={{ color: colors.textSecondary }}>
           No craving data available.
         </Text>
@@ -128,7 +146,10 @@ export default function StatsScreen({ navigation }: any) {
         }}
         showsVerticalScrollIndicator={false}
       >
-        <Text className="text-2xl font-bold mb-6 text-center" style={{ color: colors.primary }}>
+        <Text
+          className="text-2xl font-bold mb-6 text-center"
+          style={{ color: colors.primary }}
+        >
           📊 Your Craving Stats
         </Text>
 

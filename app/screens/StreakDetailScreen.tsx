@@ -1,6 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import { View, Text, ScrollView, SafeAreaView, RefreshControl } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import { format, parseISO } from 'date-fns';
 import colors from '../utils/colors';
 
 export default function StreakDetailsScreen({ route, navigation }: any) {
@@ -13,36 +14,49 @@ export default function StreakDetailsScreen({ route, navigation }: any) {
     const grouped: { [type: string]: { date: string; resolved: boolean }[] } = {};
 
     cravings.forEach((craving: any) => {
-      const type = craving.type || 'Unknown';
-      const date = new Date(craving.createdAt).toISOString().split('T')[0];
+  const type = craving.type?.name || 'Unknown'; // Access type.name safely
+  const date = format(parseISO(craving.createdAt), 'yyyy-MM-dd');
 
-      if (!grouped[type]) grouped[type] = [];
-      grouped[type].push({ date, resolved: craving.resolved });
-    });
+  if (!grouped[type]) grouped[type] = [];
+  grouped[type].push({ date, resolved: craving.resolved });
+});
+
 
     const result: { [type: string]: number } = {};
 
     Object.entries(grouped).forEach(([type, entries]) => {
-      const sorted = entries
-        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  // Map date → true if gave in for this type
+  const gaveInByDate: { [date: string]: boolean } = {};
+  entries.forEach(e => {
+    if (!e.resolved) gaveInByDate[e.date] = true;
+  });
 
-      let streak = 0;
-      let dayCursor = new Date(today);
-      let breakStreak = false;
+  // Find oldest craving date for this type
+  const oldestDateStr = entries.reduce((oldest, e) =>
+    e.date < oldest ? e.date : oldest,
+    entries[0].date
+  );
 
-      while (!breakStreak) {
-        const dateStr = dayCursor.toISOString().split('T')[0];
-        const entry = sorted.find(e => e.date === dateStr);
+  let streak = 0;
+  let dayCursor = new Date();
 
-        if (!entry) break;
-        if (!entry.resolved) break;
+  while (true) {
+    const dayStr = format(dayCursor, 'yyyy-MM-dd');
 
-        streak++;
-        dayCursor.setDate(dayCursor.getDate() - 1);
-      }
+    // If day before oldest craving date → stop streak
+    if (dayStr < oldestDateStr) break;
 
-      result[type] = streak;
-    });
+    if (gaveInByDate[dayStr]) break;
+
+    streak++;
+    dayCursor.setDate(dayCursor.getDate() - 1);
+
+    if (streak > 365) break;
+  }
+
+  result[type] = streak;
+});
+
 
     setStreaksByType(result);
   };
@@ -67,9 +81,7 @@ export default function StreakDetailsScreen({ route, navigation }: any) {
           paddingHorizontal: 24,
           paddingBottom: 40,
         }}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
         <Text
           className="text-3xl font-bold mb-6 text-center"

@@ -14,12 +14,19 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model CravingEvent {
-  id        Int      @id @default(autoincrement())
-  createdAt DateTime @default(now())
-  intensity Int?     // scale of 1–10
-  notes     String?  // what triggered it
-  resolved  Boolean  // did breathing help?
-  type      String   // e.g., "food", "smoke", "drink", "cigarette", "vape", "weed", "cocaine", "heroin", "other"
+model CravingType {
+  id     Int     @id @default(autoincrement())
+  name   String  @unique
+  events CravingEvent[]
+  isCustom Boolean @default(true) // true = user-defined, false = built-in
 }
 
+model CravingEvent {
+  id        Int       @id @default(autoincrement())
+  createdAt DateTime  @default(now())
+  intensity Int?
+  notes     String?
+  resolved  Boolean
+  typeId    Int?       // make this nullable first
+  type      CravingType? @relation(fields: [typeId], references: [id])
+}

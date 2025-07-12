@@ -8,6 +8,9 @@ import CravingListScreen from '../screens/CravingListScreen';
 import CravingDetailScreen from '../screens/CravingDetailScreen';
 import StreakDetailScreen from  '../screens/StreakDetailScreen';
 import MonthlyStatsScreen from '../screens/MonthlyStatsScreen';
+import SessionCompleteScreen from '../screens/SessionCompleteScreen'; // Import if needed
+import Settings from '../screens/SettingScreen'; // Import your settings screen
+import { TouchableOpacity } from 'react-native';
 
 const Tab = createBottomTabNavigator();
 
@@ -31,7 +34,23 @@ export default function Tabs() {
         tabBarShowLabel: false,
       })}
     >
-      <Tab.Screen name="Home" component={HomeScreen} />
+     <Tab.Screen
+  name="Home"
+  component={HomeScreen}
+  options={({ navigation }) => ({
+    headerShown: true,
+    headerTitle: '', // optional: hide default title
+    headerRight: () => (
+      <TouchableOpacity
+        onPress={() => navigation.navigate('Settings')}
+        style={{ marginRight: 16 }}
+      >
+        <Ionicons name="settings-outline" size={24} color="#2563eb" />
+      </TouchableOpacity>
+    ),
+  })}
+/>
+
       <Tab.Screen name="Stats" component={StatsScreen} />
       <Tab.Screen name="Calming" component={CalmingStack} options={{ tabBarButton: () => null }} />
       <Tab.Screen name="CravingList" component={CravingListScreen} />
@@ -46,6 +65,7 @@ export default function Tabs() {
         options={{ tabBarButton: () => null }}
       />
       <Tab.Screen name="MonthlyStats" component={MonthlyStatsScreen} options={{ tabBarButton: () => null }}/>
+      <Tab.Screen name="Settings" component={Settings}options={{ tabBarButton: () => null }} />
     </Tab.Navigator>
   );
 }

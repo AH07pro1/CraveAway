@@ -9,23 +9,27 @@ const cravingSchema = z.object({
   intensity: z.number().min(1).max(10).optional(),
   notes: z.string().optional(),
   resolved: z.boolean(),
-  type: z.enum([
-    'food',
-    'smoke',
-    'drink',
-    'cigarette',
-    'vape',
-    'weed',
-    'cocaine',
-    'heroin',
-    'other',
-  ]),
+  type: z.string({
+  required_error: "Type is required",
+  invalid_type_error: "Type must be a string",
+}),
+
 });
 
 // GET all cravings
 router.get('/', async (_req: Request, res: Response) => {
   try {
-    const cravings = await prisma.cravingEvent.findMany();
+    const cravings = await prisma.cravingEvent.findMany({
+  include: {
+    type: {
+      select: {
+        name: true,
+      },
+    },
+  },
+});
+res.json(cravings);
+
     res.json(cravings);
   } catch (error) {
     console.error(error);
@@ -40,16 +44,38 @@ router.post('/', async (req: Request, res: Response): Promise<any> => {
     return res.status(400).json({ errors: result.error.format() });
   }
 
+  const { intensity, notes, resolved, type } = result.data;
+
   try {
-    const newCraving = await prisma.cravingEvent.create({
-      data: result.data,
+    // Step 1: Ensure the craving type exists or create it
+    const cravingType = await prisma.cravingType.upsert({
+      where: { name: type },
+      update: {}, // no fields to update
+      create: { name: type, isCustom: false }, // add 'isCustom' field if it exists
     });
+
+    // Step 2: Create the craving and connect to the craving type
+    const newCraving = await prisma.cravingEvent.create({
+      data: {
+        intensity,
+        notes,
+        resolved,
+        type: {
+          connect: { id: cravingType.id },
+        },
+      },
+      include: {
+        type: true, // so frontend gets the name back too
+      },
+    });
+
     res.status(201).json(newCraving);
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Failed to create craving' });
   }
 });
+
 
 // GET craving by id
 router.get('/:id', async (req: Request, res: Response): Promise<any> => {
@@ -61,6 +87,9 @@ router.get('/:id', async (req: Request, res: Response): Promise<any> => {
   try {
     const craving = await prisma.cravingEvent.findUnique({
       where: { id },
+      include: {
+        type: true, // Include type relation
+      },
     });
 
     if (!craving) {

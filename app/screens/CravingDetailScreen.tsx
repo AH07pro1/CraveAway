@@ -10,13 +10,19 @@ import {
 } from "react-native";
 import colors from "../utils/colors"; // adjust path as needed
 
+type CravingType = {
+  id: number;
+  name: string;
+  isCustom: boolean;
+};
+
 type CravingEvent = {
   id: number;
   createdAt: string;
   intensity?: number;
   notes?: string;
   resolved: boolean;
-  type: string;
+  type: CravingType | null;
 };
 
 export default function CravingDetailScreen({ route, navigation }: any) {
@@ -80,7 +86,7 @@ export default function CravingDetailScreen({ route, navigation }: any) {
       <ScrollView
         contentContainerStyle={{
           paddingHorizontal: 24,
-          paddingTop: 48, // added padding top here for spacing
+          paddingTop: 48,
           paddingBottom: 24,
         }}
         showsVerticalScrollIndicator={false}
@@ -111,7 +117,7 @@ export default function CravingDetailScreen({ route, navigation }: any) {
             className="text-xl font-semibold capitalize mb-3"
             style={{ color: colors.primary }}
           >
-            Type: {craving.type}
+            Type: {craving.type?.name ?? "N/A"}
           </Text>
 
           <Text className="text-lg mb-2" style={{ color: colors.textMain }}>
@@ -138,7 +144,7 @@ export default function CravingDetailScreen({ route, navigation }: any) {
           onPress={() => navigation.goBack()}
           className="py-3 px-10 rounded-full self-center"
           style={{ backgroundColor: colors.primary }}
-          android_ripple={{ color: 'rgba(255, 255, 255, 0.3)' }}
+          android_ripple={{ color: "rgba(255, 255, 255, 0.3)" }}
         >
           <Text className="text-white font-semibold text-lg">Back</Text>
         </Pressable>
