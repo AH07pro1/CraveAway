@@ -26,6 +26,7 @@ const BOX_SIZE = 240;
 const BALL_SIZE = 48;
 
 export default function CalmingSessionScreen({ navigation }: any) {
+  const [totalDuration, setTotalDuration] = useState(SESSION_DURATION);
   const [secondsLeft, setSecondsLeft] = useState(SESSION_DURATION);
   const [phase, setPhase] = useState<"Inhale" | "Exhale" | "Hold">("Inhale");
 
@@ -34,13 +35,15 @@ export default function CalmingSessionScreen({ navigation }: any) {
   const [tip, setTip] = useState("");
   const [breathingType, setBreathingType] = useState<"circle" | "box">("circle");
 
-  const progressAnim = useRef(new RNAnimated.Value(1)).current;
+  const elapsedRef = useRef(0);
+  const animationStartTimeRef = useRef<number | null>(null);
+  const animationTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const timerInterval = useRef<NodeJS.Timeout | null>(null);
+  const breathingInterval = useRef<NodeJS.Timeout | null>(null);
 
+  const progressAnim = useRef(new RNAnimated.Value(1)).current;
   const scale = useSharedValue(1);
   const moveAnim = useSharedValue(0);
-
-  const breathingInterval = useRef<NodeJS.Timeout | null>(null);
-  const timerInterval = useRef<NodeJS.Timeout | null>(null);
 
   const voiceRef = useRef(voiceEnabled);
   useEffect(() => {
@@ -55,17 +58,26 @@ export default function CalmingSessionScreen({ navigation }: any) {
     return () => {
       cancelAnimation(scale);
       cancelAnimation(moveAnim);
+      if (animationTimerRef.current) clearInterval(animationTimerRef.current);
+      if (timerInterval.current) clearInterval(timerInterval.current);
+      if (breathingInterval.current) clearInterval(breathingInterval.current);
+      Speech.stop();
     };
   }, []);
 
+  // Breathing circle logic
   const startBreathingCircle = useCallback(() => {
     setPhase("Inhale");
+    Speech.stop();
     if (voiceRef.current) Speech.speak("Inhale", { rate: 0.9 });
+
     scale.value = withTiming(1.5, { duration: BREATH_DURATION / 2 });
 
+    if (breathingInterval.current) clearInterval(breathingInterval.current);
     breathingInterval.current = setInterval(() => {
       setPhase((prev) => {
         const next = prev === "Inhale" ? "Exhale" : "Inhale";
+        Speech.stop();
         if (voiceRef.current) Speech.speak(next, { rate: 0.9 });
 
         scale.value = withTiming(next === "Inhale" ? 1.5 : 0.9, {
@@ -75,8 +87,9 @@ export default function CalmingSessionScreen({ navigation }: any) {
         return next;
       });
     }, BREATH_DURATION / 2);
-  }, []);
+  }, [scale]);
 
+  // Breathing box logic
   const startBoxLoop = () => {
     runOnUI(() => {
       const phaseDur = BREATH_DURATION / 4;
@@ -119,6 +132,7 @@ export default function CalmingSessionScreen({ navigation }: any) {
     let step = 0;
 
     setPhase(steps[step]);
+    Speech.stop();
     if (voiceRef.current) Speech.speak(steps[step], { rate: 0.9 });
 
     startBoxLoop();
@@ -128,61 +142,95 @@ export default function CalmingSessionScreen({ navigation }: any) {
     breathingInterval.current = setInterval(() => {
       step = (step + 1) % steps.length;
       setPhase(steps[step]);
+      Speech.stop();
       if (voiceRef.current) Speech.speak(steps[step], { rate: 0.9 });
     }, BREATH_DURATION / 4);
-  }, []);
+  }, [moveAnim]);
 
-  const startSession = useCallback(() => {
-    const types: ("circle" | "box")[] = ["circle", "box"];
-    const chosenType = types[Math.floor(Math.random() * types.length)];
-    setBreathingType(chosenType);
+  // ==== TIMER + PROGRESS ANIMATION LOGIC ==== //
 
-    setSecondsLeft(SESSION_DURATION);
-    setPaused(false);
-    setPhase("Inhale");
+  // Start or restart the countdown timer and progress animation
+  const startTimer = useCallback(
+    (newTotalDuration: number, elapsed = 0) => {
+      // Stop old animations & timers
+      RNAnimated.timing(progressAnim).stop();
+      if (animationTimerRef.current) clearInterval(animationTimerRef.current);
+      if (timerInterval.current) clearInterval(timerInterval.current);
 
-    progressAnim.setValue(1);
-    RNAnimated.timing(progressAnim, {
-      toValue: 0,
-      duration: SESSION_DURATION * 1000,
-      useNativeDriver: false,
-    }).start();
+      animationStartTimeRef.current = Date.now() - elapsed * 1000;
+      elapsedRef.current = elapsed;
 
-    if (chosenType === "circle") {
-      scale.value = withTiming(1.5, { duration: BREATH_DURATION / 2 });
-      startBreathingCircle();
-    } else {
-      startBreathingBox();
-    }
+      // Set progress to remaining ratio
+      progressAnim.setValue((newTotalDuration - elapsed) / newTotalDuration);
 
-    timerInterval.current = setInterval(() => {
-      setSecondsLeft((prev) => {
-        if (prev <= 1) {
+      // Animate progress bar from current progress to zero over remaining time
+      RNAnimated.timing(progressAnim, {
+        toValue: 0,
+        duration: (newTotalDuration - elapsed) * 1000,
+        useNativeDriver: false,
+      }).start();
+
+      // Update secondsLeft and elapsed every 200ms
+      animationTimerRef.current = setInterval(() => {
+        const elapsedMs = Date.now() - (animationStartTimeRef.current ?? Date.now());
+        elapsedRef.current = elapsedMs / 1000;
+
+        const timeLeft = newTotalDuration - elapsedRef.current;
+        if (timeLeft <= 0) {
+          clearInterval(animationTimerRef.current!);
           clearInterval(timerInterval.current!);
           clearInterval(breathingInterval.current!);
           Speech.stop();
           navigation.replace("SessionComplete");
-          return 0;
+          setSecondsLeft(0);
+          return;
         }
-        return prev - 1;
-      });
-    }, 1000);
-  }, [startBreathingCircle, startBreathingBox, navigation, progressAnim, scale]);
+        setSecondsLeft(Math.ceil(timeLeft));
+      }, 200);
 
-  useFocusEffect(
-    useCallback(() => {
-      startSession();
-      return () => {
-        clearInterval(timerInterval.current!);
-        clearInterval(breathingInterval.current!);
-        Speech.stop();
-      };
-    }, [startSession])
+      
+    },
+    [navigation, progressAnim]
   );
 
+  // Start session fresh or on focus
+  useFocusEffect(
+    useCallback(() => {
+      setTotalDuration(SESSION_DURATION);
+      setSecondsLeft(SESSION_DURATION);
+      elapsedRef.current = 0;
+      setPaused(false);
+
+      if (breathingType === "circle") {
+        scale.value = withTiming(1.5, { duration: BREATH_DURATION / 2 });
+        startBreathingCircle();
+      } else {
+        startBreathingBox();
+      }
+
+      startTimer(SESSION_DURATION, 0);
+
+      return () => {
+        if (animationTimerRef.current) clearInterval(animationTimerRef.current);
+        if (timerInterval.current) clearInterval(timerInterval.current);
+        if (breathingInterval.current) clearInterval(breathingInterval.current);
+        Speech.stop();
+      };
+    }, [breathingType, scale, startBreathingCircle, startBreathingBox, startTimer])
+  );
+
+  // Add 30 seconds without resetting progress bar
+  const addTime = () => {
+    const elapsed = elapsedRef.current;
+    const newTotal = totalDuration + 30;
+    setTotalDuration(newTotal);
+    startTimer(newTotal, elapsed);
+  };
+
   const finishEarly = () => {
-    clearInterval(timerInterval.current!);
-    clearInterval(breathingInterval.current!);
+    if (animationTimerRef.current) clearInterval(animationTimerRef.current);
+    if (timerInterval.current) clearInterval(timerInterval.current);
+    if (breathingInterval.current) clearInterval(breathingInterval.current);
     Speech.stop();
     RNAnimated.timing(progressAnim).stop();
     navigation.replace("SessionComplete");
@@ -190,8 +238,9 @@ export default function CalmingSessionScreen({ navigation }: any) {
 
   const pause = () => {
     setPaused(true);
-    clearInterval(timerInterval.current!);
-    clearInterval(breathingInterval.current!);
+    if (animationTimerRef.current) clearInterval(animationTimerRef.current);
+    if (timerInterval.current) clearInterval(timerInterval.current);
+    if (breathingInterval.current) clearInterval(breathingInterval.current);
     Speech.stop();
     RNAnimated.timing(progressAnim).stop();
     cancelAnimation(scale);
@@ -200,25 +249,7 @@ export default function CalmingSessionScreen({ navigation }: any) {
 
   const resume = () => {
     setPaused(false);
-
-    timerInterval.current = setInterval(() => {
-      setSecondsLeft((prev) => {
-        if (prev <= 1) {
-          clearInterval(timerInterval.current!);
-          clearInterval(breathingInterval.current!);
-          Speech.stop();
-          navigation.replace("SessionComplete");
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    RNAnimated.timing(progressAnim, {
-      toValue: 0,
-      duration: secondsLeft * 1000,
-      useNativeDriver: false,
-    }).start();
+    startTimer(totalDuration, elapsedRef.current);
 
     if (breathingType === "circle") {
       startBreathingCircle();
@@ -227,6 +258,7 @@ export default function CalmingSessionScreen({ navigation }: any) {
     }
   };
 
+  // Animated styles
   const ballStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
   }));
@@ -264,6 +296,7 @@ export default function CalmingSessionScreen({ navigation }: any) {
     };
   });
 
+  // Progress bar width interpolation
   const progressWidth = progressAnim.interpolate({
     inputRange: [0, 1],
     outputRange: ["0%", "100%"],
@@ -274,6 +307,32 @@ export default function CalmingSessionScreen({ navigation }: any) {
       className="flex-1 pt-20 px-6 pb-8"
       style={{ backgroundColor: colors.background }}
     >
+      {/* User Controls */}
+      <View className="mb-4 space-y-2">
+        <View className="flex-row space-x-4 justify-center">
+          <Pressable
+            onPress={() =>
+              setBreathingType((prev) => (prev === "circle" ? "box" : "circle"))
+            }
+            className="flex-1 px-4 py-2 rounded-full items-center shadow"
+            style={{ backgroundColor: colors.primary }}
+          >
+            <Text className="text-white font-semibold">
+              Breathing: {breathingType === "circle" ? "Circle" : "Box"}
+            </Text>
+          </Pressable>
+
+          <Pressable
+            onPress={addTime}
+            className="flex-1 px-4 py-2 rounded-full items-center shadow"
+            style={{ backgroundColor: colors.accentLight }}
+          >
+            <Text style={{ color: colors.primary, fontWeight: "600" }}>+30s</Text>
+          </Pressable>
+        </View>
+      </View>
+
+      {/* Progress Bar */}
       <View
         className="w-full h-2 rounded-full mb-4 overflow-hidden"
         style={{ backgroundColor: colors.accentLight }}
@@ -284,6 +343,7 @@ export default function CalmingSessionScreen({ navigation }: any) {
         />
       </View>
 
+      {/* Timer */}
       <View className="items-center mb-6">
         <Text
           className="text-4xl font-extrabold drop-shadow"
@@ -293,6 +353,7 @@ export default function CalmingSessionScreen({ navigation }: any) {
         </Text>
       </View>
 
+      {/* Breathing Visual */}
       <View className="flex-1 justify-center items-center relative">
         {breathingType === "circle" ? (
           <Animated.View
@@ -361,6 +422,7 @@ export default function CalmingSessionScreen({ navigation }: any) {
         )}
       </View>
 
+      {/* Action Buttons */}
       <View className="space-y-4 mt-8">
         <View className="flex-row justify-center space-x-4">
           <Pressable
@@ -380,7 +442,12 @@ export default function CalmingSessionScreen({ navigation }: any) {
               backgroundColor: voiceEnabled ? colors.primary : colors.border,
             }}
           >
-            <Text className="text-white font-semibold">
+            <Text
+              style={{
+                color: voiceEnabled ? "#fff" : colors.textMain,
+                fontWeight: "600",
+              }}
+            >
               Voice: {voiceEnabled ? "On" : "Off"}
             </Text>
           </Pressable>
