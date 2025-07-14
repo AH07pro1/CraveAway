@@ -8,10 +8,10 @@
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "splash": {
-  "image": "./assets/app_icon_splash.png",
-  "resizeMode": "contain",
-  "backgroundColor": "#ffffff"
-},
+      "image": "./assets/app_icon_splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
     "ios": {
       "supportsTablet": true
     },
@@ -25,7 +25,9 @@
     "web": {
       "bundler": "metro",
       "favicon": "./assets/favicon.png"
-    }
-    
+    },
+    "plugins": [
+      "expo-secure-store"
+    ]
   }
 }

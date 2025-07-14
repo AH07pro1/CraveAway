@@ -43,10 +43,10 @@ export default function Navigation() {
   }, []);
 
   return (
-    <NavigationContainer ref={navigationRef}>
+    // <NavigationContainer ref={navigationRef}>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         <Stack.Screen name="Tabs" component={Tabs} />
       </Stack.Navigator>
-    </NavigationContainer>
+    // </NavigationContainer>
   );
 }

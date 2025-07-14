@@ -195,7 +195,9 @@ export default function CalmingSessionScreen({ navigation }: any) {
           clearInterval(timerInterval.current!);
           clearInterval(breathingInterval.current!);
           Speech.stop();
-          navigation.replace("SessionComplete");
+          const timeSpent = Math.floor(elapsedRef.current);
+navigation.replace("SessionComplete", { timeSpent });
+
           setSecondsLeft(0);
           return;
         }
@@ -249,7 +251,8 @@ export default function CalmingSessionScreen({ navigation }: any) {
     if (breathingInterval.current) clearInterval(breathingInterval.current);
     Speech.stop();
     RNAnimated.timing(progressAnim).stop();
-    navigation.replace("SessionComplete");
+    const timeSpent = Math.floor(elapsedRef.current);
+navigation.replace("SessionComplete", { timeSpent });
   };
 
   const pause = () => {
@@ -442,7 +445,15 @@ export default function CalmingSessionScreen({ navigation }: any) {
   ) : (
 
   <View style={{ position: "relative", width, height }}>
-  <TappingDotsGame colors={colors} spawnArea={spawnArea} />
+  <TappingDotsGame
+  colors={colors}
+  spawnArea={spawnArea}
+  paused={paused}
+  voiceEnabled={voiceEnabled}
+/>
+
+
+
 
 </View>
 
