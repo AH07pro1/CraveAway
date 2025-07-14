@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
-import { View, Text, Pressable, Animated as RNAnimated } from "react-native";
+import { View, Text,Dimensions, Pressable, Animated as RNAnimated } from "react-native";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -10,6 +10,7 @@ import Animated, {
 import * as Speech from "expo-speech";
 import { useFocusEffect } from "@react-navigation/native";
 import colors from "../utils/colors";
+import TappingDotsGame from "./TappingDotsGame";
 
 const SESSION_DURATION = 60;
 const BREATH_DURATION = 16000;
@@ -24,7 +25,7 @@ const tips = [
 
 const BOX_SIZE = 240;
 const BALL_SIZE = 48;
-
+const { width, height } = Dimensions.get("window");
 export default function CalmingSessionScreen({ navigation }: any) {
   const [totalDuration, setTotalDuration] = useState(SESSION_DURATION);
   const [secondsLeft, setSecondsLeft] = useState(SESSION_DURATION);
@@ -33,7 +34,18 @@ export default function CalmingSessionScreen({ navigation }: any) {
   const [paused, setPaused] = useState(false);
   const [voiceEnabled, setVoiceEnabled] = useState(true);
   const [tip, setTip] = useState("");
-  const [breathingType, setBreathingType] = useState<"circle" | "box">("circle");
+  const [breathingType, setBreathingType] = useState<"circle" | "box" | "tapping">("circle");
+
+  const topUIHeight = 140;    // approx height of top buttons + padding
+  const bottomUIHeight = 150; // approx height of bottom buttons + padding
+
+  const spawnArea = {
+    xMin: 0,
+    yMin: topUIHeight,
+    xMax: width -20,
+    yMax: height - bottomUIHeight,
+  };
+
 
   const elapsedRef = useRef(0);
   const animationStartTimeRef = useRef<number | null>(null);
@@ -54,16 +66,18 @@ export default function CalmingSessionScreen({ navigation }: any) {
     setTip(tips[Math.floor(Math.random() * tips.length)]);
   }, []);
 
-  useEffect(() => {
-    return () => {
-      cancelAnimation(scale);
-      cancelAnimation(moveAnim);
-      if (animationTimerRef.current) clearInterval(animationTimerRef.current);
-      if (timerInterval.current) clearInterval(timerInterval.current);
-      if (breathingInterval.current) clearInterval(breathingInterval.current);
-      Speech.stop();
-    };
-  }, []);
+ useEffect(() => {
+  if (breathingType === "tapping") {
+    if (animationTimerRef.current) clearInterval(animationTimerRef.current);
+    if (timerInterval.current) clearInterval(timerInterval.current);
+    if (breathingInterval.current) clearInterval(breathingInterval.current);
+    Speech.stop();
+    RNAnimated.timing(progressAnim).stop();
+    cancelAnimation(scale);
+    cancelAnimation(moveAnim);
+  }
+}, [breathingType]);
+
 
   // Breathing circle logic
   const startBreathingCircle = useCallback(() => {
@@ -194,30 +208,32 @@ export default function CalmingSessionScreen({ navigation }: any) {
   );
 
   // Start session fresh or on focus
-  useFocusEffect(
-    useCallback(() => {
-      setTotalDuration(SESSION_DURATION);
-      setSecondsLeft(SESSION_DURATION);
-      elapsedRef.current = 0;
-      setPaused(false);
+ useFocusEffect(
+  useCallback(() => {
+    setTotalDuration(SESSION_DURATION);
+    setSecondsLeft(SESSION_DURATION);
+    elapsedRef.current = 0;
+    setPaused(false);
 
-      if (breathingType === "circle") {
-        scale.value = withTiming(1.5, { duration: BREATH_DURATION / 2 });
-        startBreathingCircle();
-      } else {
-        startBreathingBox();
-      }
+    if (breathingType === "circle") {
+      scale.value = withTiming(1.5, { duration: BREATH_DURATION / 2 });
+      startBreathingCircle();
+    } else if (breathingType === "box") {
+      startBreathingBox();
+    }
+    // If tapping, do NOT start breathing voice or animation
 
-      startTimer(SESSION_DURATION, 0);
+    startTimer(SESSION_DURATION, 0);
 
-      return () => {
-        if (animationTimerRef.current) clearInterval(animationTimerRef.current);
-        if (timerInterval.current) clearInterval(timerInterval.current);
-        if (breathingInterval.current) clearInterval(breathingInterval.current);
-        Speech.stop();
-      };
-    }, [breathingType, scale, startBreathingCircle, startBreathingBox, startTimer])
-  );
+    return () => {
+      if (animationTimerRef.current) clearInterval(animationTimerRef.current);
+      if (timerInterval.current) clearInterval(timerInterval.current);
+      if (breathingInterval.current) clearInterval(breathingInterval.current);
+      Speech.stop();
+    };
+  }, [breathingType, scale, startBreathingCircle, startBreathingBox, startTimer])
+);
+
 
   // Add 30 seconds without resetting progress bar
   const addTime = () => {
@@ -311,16 +327,19 @@ export default function CalmingSessionScreen({ navigation }: any) {
       <View className="mb-4 space-y-2">
         <View className="flex-row space-x-4 justify-center">
           <Pressable
-            onPress={() =>
-              setBreathingType((prev) => (prev === "circle" ? "box" : "circle"))
-            }
-            className="flex-1 px-4 py-2 rounded-full items-center shadow"
-            style={{ backgroundColor: colors.primary }}
-          >
-            <Text className="text-white font-semibold">
-              Breathing: {breathingType === "circle" ? "Circle" : "Box"}
-            </Text>
-          </Pressable>
+  onPress={() =>
+    setBreathingType((prev) =>
+      prev === "circle" ? "box" : prev === "box" ? "tapping" : "circle"
+    )
+}
+  className="flex-1 px-4 py-2 rounded-full items-center shadow"
+  style={{ backgroundColor: colors.primary }}
+>
+  <Text className="text-white font-semibold">
+    Breathing: {breathingType}
+  </Text>
+</Pressable>
+
 
           <Pressable
             onPress={addTime}
@@ -355,71 +374,81 @@ export default function CalmingSessionScreen({ navigation }: any) {
 
       {/* Breathing Visual */}
       <View className="flex-1 justify-center items-center relative">
-        {breathingType === "circle" ? (
-          <Animated.View
-            className="w-48 h-48 rounded-full shadow-lg justify-center items-center border-4"
-            style={[
-              ballStyle,
-              {
-                backgroundColor: colors.accentLight,
-                borderColor: colors.primary,
-              },
-            ]}
-          >
-            <View className="absolute inset-0 justify-center items-center">
-              <Text
-                className="text-3xl font-semibold"
-                style={{ color: colors.textMain }}
-              >
-                {phase}
-              </Text>
-            </View>
-          </Animated.View>
-        ) : (
-          <View
-            style={{
-              width: BOX_SIZE,
-              height: BOX_SIZE,
-              borderWidth: BORDER_THICKNESS,
-              borderColor: colors.border,
-              borderRadius: 24,
-              position: "relative",
-              backgroundColor: colors.accentLight,
-            }}
-          >
-            <Animated.View
-              style={[
-                {
-                  position: "absolute",
-                  width: BALL_SIZE,
-                  height: BALL_SIZE,
-                  borderRadius: BALL_SIZE / 2,
-                  backgroundColor: colors.primary,
-                  borderWidth: 3,
-                  borderColor: colors.accentLight,
-                },
-                boxBallStyle,
-              ]}
-            />
-            <View
-              style={{
-                position: "absolute",
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-                justifyContent: "center",
-                alignItems: "center",
-              }}
-            >
-              <Text
-                style={{ fontSize: 32, fontWeight: "600", color: colors.textMain }}
-              >
-                {phase}
-              </Text>
-            </View>
-          </View>
-        )}
+       <View className="flex-1 justify-center items-center relative">
+  {breathingType === "circle" ? (
+    <Animated.View
+      className="w-48 h-48 rounded-full shadow-lg justify-center items-center border-4"
+      style={[
+        ballStyle,
+        {
+          backgroundColor: colors.accentLight,
+          borderColor: colors.primary,
+        },
+      ]}
+    >
+      <View className="absolute inset-0 justify-center items-center">
+        <Text
+          className="text-3xl font-semibold"
+          style={{ color: colors.textMain }}
+        >
+          {phase}
+        </Text>
+      </View>
+    </Animated.View>
+  ) : breathingType === "box" ? (
+    <View
+      style={{
+        width: BOX_SIZE,
+        height: BOX_SIZE,
+        borderWidth: BORDER_THICKNESS,
+        borderColor: colors.border,
+        borderRadius: 24,
+        position: "relative",
+        backgroundColor: colors.accentLight,
+      }}
+    >
+      <Animated.View
+        style={[
+          {
+            position: "absolute",
+            width: BALL_SIZE,
+            height: BALL_SIZE,
+            borderRadius: BALL_SIZE / 2,
+            backgroundColor: colors.primary,
+            borderWidth: 3,
+            borderColor: colors.accentLight,
+          },
+          boxBallStyle,
+        ]}
+      />
+      <View
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          justifyContent: "center",
+          alignItems: "center",
+        }}
+      >
+        <Text
+          style={{ fontSize: 32, fontWeight: "600", color: colors.textMain }}
+        >
+          {phase}
+        </Text>
+      </View>
+    </View>
+  ) : (
+
+  <View style={{ position: "relative", width, height }}>
+  <TappingDotsGame colors={colors} spawnArea={spawnArea} />
+
+</View>
+
+  )}
+</View>
+
       </View>
 
       {/* Action Buttons */}
