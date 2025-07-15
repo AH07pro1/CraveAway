@@ -12,7 +12,6 @@ import {
   SafeAreaView,
 } from "react-native";
 import colors from "../utils/colors";
-import { SignOutButton } from "./auth/components/SignOutButton";
 
 type CravingType = { name: string; isCustom: boolean };
 
@@ -93,7 +92,6 @@ export default function SettingsScreen() {
           Settings
         </Text>
       </View>
-      <SignOutButton />
 
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}

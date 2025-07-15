@@ -1,7 +1,8 @@
-import * as React from 'react';
-import { Text, TextInput, TouchableOpacity, View } from 'react-native';
+import React from 'react';
+import { View, Text, TextInput, TouchableOpacity } from 'react-native';
 import { useSignUp } from '@clerk/clerk-expo';
 import { useNavigation } from '@react-navigation/native';
+import colors from '../../utils/colors';
 
 export default function SignUpScreen() {
   const { isLoaded, signUp, setActive } = useSignUp();
@@ -15,6 +16,7 @@ export default function SignUpScreen() {
 
   const onSignUpPress = async () => {
     if (!isLoaded) return;
+    setError(null);
 
     try {
       await signUp.create({
@@ -25,82 +27,151 @@ export default function SignUpScreen() {
       await signUp.prepareEmailAddressVerification({ strategy: 'email_code' });
       setPendingVerification(true);
     } catch (err: any) {
-      console.error(JSON.stringify(err, null, 2));
       setError(err?.errors?.[0]?.message || 'Sign-up failed.');
     }
   };
 
   const onVerifyPress = async () => {
     if (!isLoaded) return;
+    setError(null);
 
     try {
-      const signUpAttempt = await signUp.attemptEmailAddressVerification({
-        code,
-      });
+      const signUpAttempt = await signUp.attemptEmailAddressVerification({ code });
 
       if (signUpAttempt.status === 'complete') {
         await setActive({ session: signUpAttempt.createdSessionId });
-        navigation.replace('Home'); // Adjust to your actual home screen name
+        navigation.replace('Home');
       } else {
-        console.error(JSON.stringify(signUpAttempt, null, 2));
         setError('Verification incomplete. Please try again.');
       }
     } catch (err: any) {
-      console.error(JSON.stringify(err, null, 2));
       setError(err?.errors?.[0]?.message || 'Verification failed.');
     }
   };
 
   if (pendingVerification) {
     return (
-      <View className="flex-1 justify-center px-6 bg-white">
-        <Text className="text-2xl font-bold text-center mb-6">Verify your email</Text>
+      <View style={{ flex: 1, backgroundColor: colors.background, padding: 24, justifyContent: 'center' }}>
+        <Text style={{ fontSize: 24, fontWeight: 'bold', color: colors.primary, marginBottom: 24, textAlign: 'center' }}>
+          Verify your email
+        </Text>
+
         <TextInput
-          className="border border-gray-300 rounded p-3 mb-4"
+          placeholder="Enter verification code"
           value={code}
-          placeholder="Enter your verification code"
           onChangeText={setCode}
+          keyboardType="numeric"
+          style={{
+            borderWidth: 1,
+            borderColor: colors.border,
+            padding: 16,
+            borderRadius: 12,
+            marginBottom: 16,
+            fontSize: 16,
+            color: colors.textMain,
+            backgroundColor: colors.accentLight,
+            textAlign: 'center',
+          }}
         />
-        <TouchableOpacity onPress={onVerifyPress} className="bg-blue-500 p-3 rounded mb-4">
-          <Text className="text-white text-center">Verify</Text>
+
+        {error && (
+          <Text style={{ color: colors.error, textAlign: 'center', marginBottom: 16 }}>{error}</Text>
+        )}
+
+        <TouchableOpacity
+          onPress={onVerifyPress}
+          style={{
+            backgroundColor: colors.primary,
+            paddingVertical: 16,
+            borderRadius: 12,
+            marginBottom: 20,
+            shadowColor: '#000',
+            shadowOpacity: 0.15,
+            shadowRadius: 6,
+            shadowOffset: { width: 0, height: 3 },
+            elevation: 5,
+          }}
+          activeOpacity={0.85}
+        >
+          <Text style={{ color: 'white', textAlign: 'center', fontSize: 18, fontWeight: '600' }}>
+            Verify
+          </Text>
         </TouchableOpacity>
-        {error && <Text className="text-red-500 text-center">{error}</Text>}
       </View>
     );
   }
 
   return (
-    <View className="flex-1 justify-center px-6 bg-white">
-      <Text className="text-2xl font-bold text-center mb-6">Sign up</Text>
+    <View style={{ flex: 1, backgroundColor: colors.background, padding: 24, justifyContent: 'center' }}>
+      <Text style={{ fontSize: 28, fontWeight: 'bold', color: colors.primary, marginBottom: 24, textAlign: 'center' }}>
+        Sign Up
+      </Text>
 
       <TextInput
-        className="border border-gray-300 rounded p-3 mb-4"
         autoCapitalize="none"
+        keyboardType="email-address"
+        placeholder="Email"
         value={emailAddress}
-        placeholder="Enter email"
         onChangeText={setEmailAddress}
+        style={{
+          borderWidth: 1,
+          borderColor: colors.border,
+          padding: 16,
+          borderRadius: 12,
+          marginBottom: 16,
+          fontSize: 16,
+          color: colors.textMain,
+          backgroundColor: colors.accentLight,
+        }}
       />
 
       <TextInput
-        className="border border-gray-300 rounded p-3 mb-4"
-        value={password}
-        placeholder="Enter password"
+        placeholder="Password"
         secureTextEntry
+        value={password}
         onChangeText={setPassword}
+        style={{
+          borderWidth: 1,
+          borderColor: colors.border,
+          padding: 16,
+          borderRadius: 12,
+          marginBottom: 16,
+          fontSize: 16,
+          color: colors.textMain,
+          backgroundColor: colors.accentLight,
+        }}
       />
 
-      <TouchableOpacity onPress={onSignUpPress} className="bg-blue-500 p-3 rounded mb-4">
-        <Text className="text-white text-center">Continue</Text>
+      {error && (
+        <Text style={{ color: colors.error, textAlign: 'center', marginBottom: 16 }}>{error}</Text>
+      )}
+
+      <TouchableOpacity
+        onPress={onSignUpPress}
+        style={{
+          backgroundColor: colors.primary,
+          paddingVertical: 16,
+          borderRadius: 12,
+          marginBottom: 20,
+          shadowColor: '#000',
+          shadowOpacity: 0.15,
+          shadowRadius: 6,
+          shadowOffset: { width: 0, height: 3 },
+          elevation: 5,
+        }}
+        activeOpacity={0.85}
+      >
+        <Text style={{ color: 'white', textAlign: 'center', fontSize: 18, fontWeight: '600' }}>
+          Continue
+        </Text>
       </TouchableOpacity>
 
-      <View className="flex-row justify-center">
-        <Text>Already have an account? </Text>
+      <View style={{ flexDirection: 'row', justifyContent: 'center' }}>
+        <Text style={{ color: colors.textSecondary }}>Already have an account? </Text>
         <TouchableOpacity onPress={() => navigation.navigate('SignIn')}>
-          <Text className="text-blue-600">Sign in</Text>
+          <Text style={{ color: colors.primary, fontWeight: '600' }}>Sign in</Text>
         </TouchableOpacity>
       </View>
-
-      {error && <Text className="text-red-500 text-center mt-2">{error}</Text>}
     </View>
   );
 }

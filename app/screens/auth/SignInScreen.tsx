@@ -1,7 +1,9 @@
+import React from 'react';
+import { View, Text, TextInput, TouchableOpacity } from 'react-native';
 import { useSignIn } from '@clerk/clerk-expo';
 import { useNavigation } from '@react-navigation/native';
-import { Text, TextInput, TouchableOpacity, View } from 'react-native';
-import React from 'react';
+import colors from '../../utils/colors';
+import GoogleSignInButton from './components/GoogleSignInButton';
 
 export default function SignInScreen() {
   const { signIn, setActive, isLoaded } = useSignIn();
@@ -9,9 +11,11 @@ export default function SignInScreen() {
 
   const [emailAddress, setEmailAddress] = React.useState('');
   const [password, setPassword] = React.useState('');
+  const [error, setError] = React.useState<string | null>(null);
 
   const onSignInPress = async () => {
     if (!isLoaded) return;
+    setError(null);
 
     try {
       const signInAttempt = await signIn.create({
@@ -21,43 +25,86 @@ export default function SignInScreen() {
 
       if (signInAttempt.status === 'complete') {
         await setActive({ session: signInAttempt.createdSessionId });
-        navigation.replace('Home'); // or your home screen route name
+        navigation.replace('Home');
       } else {
-        console.error(JSON.stringify(signInAttempt, null, 2));
+        setError('Sign in incomplete. Please try again.');
       }
-    } catch (err) {
-      console.error(JSON.stringify(err, null, 2));
+    } catch (err: any) {
+      setError(err?.errors?.[0]?.message || 'Sign in failed.');
     }
   };
 
   return (
-    <View className="p-6">
-      <Text className="text-xl font-bold mb-4">Sign in</Text>
+    <View style={{ flex: 1, backgroundColor: colors.background, padding: 24, justifyContent: 'center' }}>
+      <Text style={{ fontSize: 28, fontWeight: 'bold', color: colors.primary, marginBottom: 24, textAlign: 'center' }}>
+        Sign In
+      </Text>
 
       <TextInput
         autoCapitalize="none"
+        placeholder="Email"
+        keyboardType="email-address"
         value={emailAddress}
-        placeholder="Enter email"
         onChangeText={setEmailAddress}
-        className="border p-3 mb-3 rounded"
+        style={{
+          borderWidth: 1,
+          borderColor: colors.border,
+          padding: 16,
+          borderRadius: 12,
+          marginBottom: 16,
+          fontSize: 16,
+          color: colors.textMain,
+          backgroundColor: colors.accentLight,
+        }}
       />
 
       <TextInput
-        value={password}
-        placeholder="Enter password"
+        placeholder="Password"
         secureTextEntry
+        value={password}
         onChangeText={setPassword}
-        className="border p-3 mb-3 rounded"
+        style={{
+          borderWidth: 1,
+          borderColor: colors.border,
+          padding: 16,
+          borderRadius: 12,
+          marginBottom: 16,
+          fontSize: 16,
+          color: colors.textMain,
+          backgroundColor: colors.accentLight,
+        }}
       />
 
-      <TouchableOpacity onPress={onSignInPress} className="bg-blue-500 p-3 rounded mb-4">
-        <Text className="text-white text-center">Continue</Text>
+      {error && (
+        <Text style={{ color: colors.error, textAlign: 'center', marginBottom: 16 }}>{error}</Text>
+      )}
+
+      <TouchableOpacity
+        onPress={onSignInPress}
+        style={{
+          backgroundColor: colors.primary,
+          paddingVertical: 16,
+          borderRadius: 12,
+          marginBottom: 20,
+          shadowColor: '#000',
+          shadowOpacity: 0.15,
+          shadowRadius: 6,
+          shadowOffset: { width: 0, height: 3 },
+          elevation: 5,
+        }}
+        activeOpacity={0.85}
+      >
+        <Text style={{ color: 'white', textAlign: 'center', fontSize: 18, fontWeight: '600' }}>
+          Continue
+        </Text>
       </TouchableOpacity>
 
-      <View className="flex-row justify-center">
-        <Text>Don't have an account? </Text>
+      <GoogleSignInButton />
+
+      <View style={{ flexDirection: 'row', justifyContent: 'center', marginTop: 28 }}>
+        <Text style={{ color: colors.textSecondary }}>Don't have an account? </Text>
         <TouchableOpacity onPress={() => navigation.navigate('SignUp')}>
-          <Text className="text-blue-600">Sign up</Text>
+          <Text style={{ color: colors.primary, fontWeight: '600' }}>Sign up</Text>
         </TouchableOpacity>
       </View>
     </View>
