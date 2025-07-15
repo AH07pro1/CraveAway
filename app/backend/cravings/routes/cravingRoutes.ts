@@ -13,29 +13,28 @@ const cravingSchema = z.object({
   required_error: "Type is required",
   invalid_type_error: "Type must be a string",
 }),
-
+userId: z.string()
 });
 
 // GET all cravings
-router.get('/', async (_req: Request, res: Response) => {
+router.get('/', async (req: Request, res: Response) => {
+  const userId = req.query.userId as string;
+  if (!userId) return res.status(400).json({ error: "Missing userId" });
+
   try {
     const cravings = await prisma.cravingEvent.findMany({
-  include: {
-    type: {
-      select: {
-        name: true,
+      where: { userId },
+      include: {
+        type: { select: { name: true } },
       },
-    },
-  },
-});
-res.json(cravings);
-
+    });
     res.json(cravings);
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Failed to fetch cravings' });
   }
 });
+
 
 // POST create a new craving
 router.post('/', async (req: Request, res: Response): Promise<any> => {
@@ -44,29 +43,27 @@ router.post('/', async (req: Request, res: Response): Promise<any> => {
     return res.status(400).json({ errors: result.error.format() });
   }
 
-  const { intensity, notes, resolved, type } = result.data;
+  // ⬅️  Grab userId too
+  const { intensity, notes, resolved, type, userId } = result.data;
 
   try {
-    // Step 1: Ensure the craving type exists or create it
+    // 1. Make sure the craving type exists
     const cravingType = await prisma.cravingType.upsert({
-      where: { name: type },
-      update: {}, // no fields to update
-      create: { name: type, isCustom: false }, // add 'isCustom' field if it exists
+      where:  { name: type },
+      update: {},
+      create: { name: type, isCustom: false },
     });
 
-    // Step 2: Create the craving and connect to the craving type
+    // 2. Create the craving linked to this user
     const newCraving = await prisma.cravingEvent.create({
       data: {
         intensity,
         notes,
         resolved,
-        type: {
-          connect: { id: cravingType.id },
-        },
+        userId,                    // ✅ now TypeScript knows what this is
+        type: { connect: { id: cravingType.id } },
       },
-      include: {
-        type: true, // so frontend gets the name back too
-      },
+      include: { type: true },
     });
 
     res.status(201).json(newCraving);

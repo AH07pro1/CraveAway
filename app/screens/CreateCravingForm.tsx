@@ -13,10 +13,14 @@ import {
 import Slider from "@react-native-community/slider";
 import { Picker } from "@react-native-picker/picker";
 import colors from "../utils/colors";
+import { useUser } from "@clerk/clerk-expo";
+
 
 type CravingType = { name: string; isCustom: boolean };
 
 export default function CreateCravingForm({ navigation }: any) {
+  const { user } = useUser();
+
   const [step, setStep] = useState(1);
   const [intensity, setIntensity] = useState("5");
   const [notes, setNotes] = useState("");
@@ -41,8 +45,15 @@ export default function CreateCravingForm({ navigation }: any) {
 
   useEffect(() => {
     const fetchCravingTypes = async () => {
+      if (!user || !user.id) {
+        console.error("User not available for fetching craving types.");
+        Alert.alert("Error", "User not logged in.");
+        return;
+      }
       try {
-        const res = await fetch("http://192.168.2.19:3000/api/craving-types");
+        const res = await fetch(
+          `http://192.168.2.19:3000/api/craving-types?userId=${user.id}`
+        );
         const data: CravingType[] = await res.json();
         setCravingTypes(data);
         if (data.length > 0) setType(data[0].name);
@@ -56,16 +67,23 @@ export default function CreateCravingForm({ navigation }: any) {
   }, []);
 
 const submitData = async () => {
+ if (!user?.id) {
+    Alert.alert("Error", "User not logged in.");
+    return;
+  }
+
   setIsSubmitting(true);
+
   try {
     const response = await fetch("http://192.168.2.19:3000/api/craving", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        intensity: Number(intensity), // number between 1-10
+        intensity: Number(intensity),
         notes,
         resolved,
-        type, // string, can be default or custom
+        type,
+        userId: user.id, // ✅ include userId
       }),
     });
 

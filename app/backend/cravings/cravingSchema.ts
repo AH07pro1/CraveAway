@@ -8,4 +8,5 @@ export const cravingSchema = z.object({
     required_error: "Type is required",
     invalid_type_error: "Type must be a string",
   }),
+  userId: z.string()
 });

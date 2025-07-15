@@ -18,7 +18,10 @@ model CravingType {
   id     Int     @id @default(autoincrement())
   name   String  @unique
   events CravingEvent[]
-  isCustom Boolean @default(true) // true = user-defined, false = built-in
+  isCustom Boolean @default(false) // true = user-defined, false = built-in
+  userId   String?
+   @@index([userId])
+  @@unique([name, userId])  
 }
 
 model CravingEvent {
@@ -27,6 +30,7 @@ model CravingEvent {
   intensity Int?
   notes     String?
   resolved  Boolean
-  typeId    Int?       // make this nullable first
+  typeId    Int?       
   type      CravingType? @relation(fields: [typeId], references: [id])
+  userId    String     // Clerk user ID to link cravings to users
 }

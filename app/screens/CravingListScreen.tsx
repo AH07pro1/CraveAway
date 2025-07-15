@@ -13,6 +13,7 @@ import { useFocusEffect } from "@react-navigation/native";
 import colors from "../utils/colors";
 import Slider from "@react-native-community/slider";
 import { Picker } from "@react-native-picker/picker";
+import { useUser } from "@clerk/clerk-expo";
 
 type CravingEvent = {
   id: number;
@@ -47,6 +48,8 @@ const cravingIcons: Record<string, string> = {
 };
 
 export default function CravingListScreen({ navigation }: any) {
+  const { user } = useUser();
+
   const [cravings, setCravings] = useState<CravingEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -68,17 +71,19 @@ export default function CravingListScreen({ navigation }: any) {
   const [filtersVisible, setFiltersVisible] = useState(false);
 
   const fetchCravings = async () => {
-    try {
-      setLoading(true);
-      const res = await fetch("http://192.168.2.19:3000/api/craving");
-      const data = await res.json();
-      setCravings(data);
-    } catch (error) {
-      console.error("Failed to fetch cravings:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  if (!user?.id) return;
+
+  try {
+    setLoading(true);
+    const res = await fetch(`http://192.168.2.19:3000/api/craving?userId=${user.id}`);
+    const data = await res.json();
+    setCravings(data);
+  } catch (error) {
+    console.error("Failed to fetch cravings:", error);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const onRefresh = async () => {
     setRefreshing(true);

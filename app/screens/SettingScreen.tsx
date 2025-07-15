@@ -12,28 +12,36 @@ import {
   SafeAreaView,
 } from "react-native";
 import colors from "../utils/colors";
+import { useUser } from "@clerk/clerk-expo";
 
 type CravingType = { name: string; isCustom: boolean };
 
 export default function SettingsScreen() {
+  const { user } = useUser();   
   const [cravingTypes, setCravingTypes] = useState<CravingType[]>([]);
   const [newType, setNewType] = useState("");
   const [loading, setLoading] = useState(false);
   const [adding, setAdding] = useState(false);
   const [showList, setShowList] = useState(true);
 
-  const fetchTypes = async () => {
-    setLoading(true);
-    try {
-      const res = await fetch("http://192.168.2.19:3000/api/craving-types");
-      const data = await res.json();
-      setCravingTypes(data);
-    } catch {
-      Alert.alert("Error", "Failed to load craving types.");
-    } finally {
-      setLoading(false);
-    }
-  };
+const fetchTypes = async () => {
+  if (!user || !user.id) {
+    Alert.alert("Error", "User not found.");
+    return;
+  }
+  setLoading(true);
+  try {
+    const res = await fetch(
+      `http://192.168.2.19:3000/api/craving-types?userId=${user.id}`
+    );
+    const data = await res.json();
+    setCravingTypes(data);
+  } catch {
+    Alert.alert("Error", "Failed to load craving types.");
+  } finally {
+    setLoading(false);
+  }
+};
 
   useEffect(() => {
     fetchTypes();
@@ -55,7 +63,7 @@ export default function SettingsScreen() {
       const res = await fetch("http://192.168.2.19:3000/api/craving-types", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: trimmed }),
+           body: JSON.stringify({ name: trimmed, userId: user!.id }),
       });
 
       if (!res.ok) {

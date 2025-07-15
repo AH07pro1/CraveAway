@@ -11,9 +11,12 @@ import { format, parseISO, subDays } from 'date-fns';
 import { BarChart } from 'react-native-gifted-charts';
 import Icon from 'react-native-vector-icons/Ionicons';
 import colors from '../utils/colors';
+import { useUser } from '@clerk/clerk-expo';
 
 export default function StatsScreen({ navigation }: any) {
-  const [cravings, setCravings] = useState([]);
+  const { user } = useUser();
+
+  const [cravings, setCravings] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [dailyCounts, setDailyCounts] = useState<{ [date: string]: number }>({});
   const [averageIntensity, setAverageIntensity] = useState(0);
@@ -30,7 +33,7 @@ export default function StatsScreen({ navigation }: any) {
     return dates;
   }
 
-  // New streak calculation function as you requested
+  // Streak calculation
   function calculateStreak(data: any[]) {
     const gaveInByDate: { [date: string]: boolean } = {};
 
@@ -60,9 +63,28 @@ export default function StatsScreen({ navigation }: any) {
 
   useEffect(() => {
     const fetchCravings = async () => {
+      if (!user?.id) {
+        console.warn('User not logged in');
+        setLoading(false);
+        return;
+      }
+
       try {
-        const res = await fetch('http://192.168.2.19:3000/api/craving');
+        const res = await fetch(`http://192.168.2.19:3000/api/craving?userId=${user.id}`);
+        if (!res.ok) {
+          console.error('Failed to fetch cravings: HTTP error', res.status);
+          setLoading(false);
+          return;
+        }
+
         const data = await res.json();
+
+        if (!Array.isArray(data)) {
+          console.error('Expected array but got:', data);
+          setLoading(false);
+          return;
+        }
+
         console.log('Fetched cravings:', data);
         setCravings(data);
 
@@ -72,7 +94,7 @@ export default function StatsScreen({ navigation }: any) {
         let resist = 0;
         let gaveIn = 0;
 
-        data.forEach((c: any) => {
+        data.forEach(c => {
           const date = format(parseISO(c.createdAt), 'yyyy-MM-dd');
           counts[date] = (counts[date] || 0) + 1;
           totalIntensity += c.intensity;
@@ -101,7 +123,7 @@ export default function StatsScreen({ navigation }: any) {
 
     const unsubscribe = navigation.addListener('focus', fetchCravings);
     return unsubscribe;
-  }, [navigation]);
+  }, [navigation, user?.id]);
 
   const last7Dates = getLast7Dates();
   const barData = last7Dates.map(date => ({
@@ -193,7 +215,7 @@ export default function StatsScreen({ navigation }: any) {
           )}
         </Pressable>
 
-        {/* Summary (static card) */}
+        {/* Summary */}
         <View className="bg-white rounded-2xl p-4 mb-6 shadow-md">
           <Text className="text-lg font-semibold mb-3" style={{ color: colors.textMain }}>
             Summary
