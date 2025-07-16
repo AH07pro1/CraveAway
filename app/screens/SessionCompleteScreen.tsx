@@ -1,11 +1,10 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { View, Text, Pressable } from "react-native";
 import colors from "../utils/colors";
-
+import { useUser } from '@clerk/clerk-expo';
 export default function SessionCompleteScreen({ route, navigation }: any) {
+  const { user } = useUser(); // Clerk user
   const { timeSpent = 0 } = route.params || {};
-
-  // Defensive fallback & parse
   const seconds = Number(timeSpent) || 0;
 
   // Display format: if >= 60s, show minutes & seconds, else show seconds
@@ -18,6 +17,32 @@ export default function SessionCompleteScreen({ route, navigation }: any) {
     displayTime = `${mins} minute${mins !== 1 ? "s" : ""}`;
     if (secs > 0) displayTime += ` and ${secs} second${secs !== 1 ? "s" : ""}`;
   }
+
+   useEffect(() => {
+    const sendXP = async () => {
+      try {
+        const response = await fetch("http://192.168.2.19:3000/api/session-complete", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            userId: user?.id,
+            timeSpent: seconds,
+          }),
+        });
+
+        const data = await response.json();
+        console.log("XP updated:", data);
+      } catch (err) {
+        console.error("XP update failed:", err);
+      }
+    };
+
+    if (user?.id && seconds > 0) {
+      sendXP();
+    }
+  }, [user, seconds]);
 
   return (
     <View

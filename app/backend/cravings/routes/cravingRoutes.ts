@@ -66,6 +66,36 @@ router.post('/', async (req: Request, res: Response): Promise<any> => {
       include: { type: true },
     });
 
+    await prisma.userProgress.upsert({
+  where: { userId },
+  update: { xp: { increment: 5 } },
+  create: { userId, xp: 5, level: 1 },
+});
+
+const user = await prisma.userProgress.findUnique({ where: { userId } });
+const newLevel = Math.floor(Math.sqrt(user!.xp / 10)) + 1;
+
+await prisma.userProgress.update({
+  where: { userId },
+  data: { level: newLevel },
+});
+
+if (resolved) {
+  await prisma.userProgress.upsert({
+    where: { userId },
+    update: { xp: { increment: 10 } },
+    create: { userId, xp: 10, level: 1 },
+  });
+
+  const user = await prisma.userProgress.findUnique({ where: { userId } });
+  const newLevel = Math.floor(Math.sqrt(user!.xp / 10)) + 1;
+
+  await prisma.userProgress.update({
+    where: { userId },
+    data: { level: newLevel },
+  });
+}
+
     res.status(201).json(newCraving);
   } catch (error) {
     console.error(error);

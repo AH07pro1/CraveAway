@@ -11,6 +11,7 @@ import MonthlyStatsScreen from '../screens/MonthlyStatsScreen';
 import Settings from '../screens/SettingScreen';
 import { TouchableOpacity } from 'react-native';
 import ProfileScreen from '../screens/ProfileScreen';
+import ProgressScreen from '../screens/ProgressScreen';
 
 const Tab = createBottomTabNavigator();
 
@@ -18,16 +19,18 @@ export default function Tabs() {
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
-        tabBarIcon: ({ color, size }) => {
-          let iconName: React.ComponentProps<typeof Ionicons>['name'] = 'home';
+       tabBarIcon: ({ color, size }) => {
+  let iconName: React.ComponentProps<typeof Ionicons>['name'] = 'home';
 
-          if (route.name === 'Home') iconName = 'home';
-          else if (route.name === 'Stats') iconName = 'stats-chart';
-          else if (route.name === 'Calming') iconName = 'leaf-outline';
-          else if (route.name === 'CravingList') iconName = 'list-outline';
+  if (route.name === 'Home') iconName = 'home';
+  else if (route.name === 'Stats') iconName = 'stats-chart';
+  else if (route.name === 'Calming') iconName = 'leaf-outline';
+  else if (route.name === 'CravingList') iconName = 'list-outline';
+  else if (route.name === 'Progress') iconName = 'trophy-outline';  // <-- here
 
-          return <Ionicons name={iconName} size={size} color={color} />;
-        },
+  return <Ionicons name={iconName} size={size} color={color} />;
+},
+
         tabBarActiveTintColor: '#2563eb',
         tabBarInactiveTintColor: 'gray',
         headerShown: false,
@@ -79,6 +82,7 @@ export default function Tabs() {
       <Tab.Screen name="MonthlyStats" component={MonthlyStatsScreen} options={{ tabBarButton: () => null }} />
       <Tab.Screen name="Settings" component={Settings} options={{ tabBarButton: () => null }} />
       <Tab.Screen name="Profile" component={ProfileScreen} options={{ tabBarButton: () => null }} />
+      <Tab.Screen name="Progress" component={ProgressScreen} />
     </Tab.Navigator>
   );
 }

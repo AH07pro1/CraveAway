@@ -34,3 +34,17 @@ model CravingEvent {
   type      CravingType? @relation(fields: [typeId], references: [id])
   userId    String     // Clerk user ID to link cravings to users
 }
+
+model UserProgress {
+  id      Int    @id @default(autoincrement())
+  userId  String @unique
+  xp      Int    @default(0)
+  level   Int    @default(1)
+}
+
+model UserDailyCheckin {
+  id        Int      @id @default(autoincrement())
+  userId    String
+  date      DateTime
+  @@unique([userId, date])
+}

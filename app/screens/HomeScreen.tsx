@@ -69,6 +69,28 @@ export default function HomeScreen({ navigation }: any) {
     );
   };
 
+ const doDailyCheckin = async () => {
+  if (!user?.id) return;
+
+  try {
+    const response = await fetch('http://192.168.2.19:3000/api/daily-checkin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId: user.id }),
+    });
+
+    const text = await response.text();  // get raw text
+    console.log('Raw daily check-in response:', text);
+
+    // Try parsing JSON only after logging raw text
+    const data = JSON.parse(text);
+    console.log('Daily check-in result:', data);
+  } catch (err) {
+    console.error('Daily check-in failed:', err);
+  }
+};
+
+
   /** Reload data on focus */
   const reloadHomeData = async () => {
     if (!user?.id) {
@@ -107,6 +129,7 @@ export default function HomeScreen({ navigation }: any) {
   useFocusEffect(
     useCallback(() => {
       reloadHomeData();
+       doDailyCheckin();
     }, [])
   );
 
@@ -116,6 +139,12 @@ export default function HomeScreen({ navigation }: any) {
       className="flex-1 justify-center items-center px-6"
       style={{ backgroundColor: colors.background }}
     >
+      <TouchableOpacity
+  onPress={doDailyCheckin}
+  style={{ padding: 10, backgroundColor: 'blue', marginTop: 20 }}
+>
+  <Text style={{ color: 'white' }}>Test Daily Check-in(test)</Text>
+</TouchableOpacity>
       {/* Header */}
       <View className="mb-6 items-center">
         <Text
