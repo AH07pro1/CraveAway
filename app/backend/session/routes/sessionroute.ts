@@ -1,6 +1,10 @@
 import express, { Request, Response } from 'express';
 import prisma from '../../lib/prisma';
 import { z } from 'zod';
+import { checkAndUnlockAchievements } from '../../../utils/checkAndUnlockAchievements';
+
+
+
 
 const router = express.Router();
 
@@ -41,7 +45,7 @@ router.post('/', async (req: Request, res: Response) => {
       create: {
         userId,
         xp: xpGained,
-        level: 1, // default level
+        level: 1,
       },
     });
 
@@ -54,6 +58,9 @@ router.post('/', async (req: Request, res: Response) => {
       data: { level: newLevel },
     });
 
+    // <-- Add this: check and unlock achievements
+    await checkAndUnlockAchievements(userId);
+
     return res.json({
       xpGained,
       totalXP: newXP,
@@ -64,6 +71,7 @@ router.post('/', async (req: Request, res: Response) => {
     return res.status(500).json({ error: 'Failed to update XP/level' });
   }
 });
+
 
 // --------------------
 // GET /api/session-complete/:userId
