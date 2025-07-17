@@ -34,21 +34,23 @@ export async function checkAndUnlockAchievements(userId: string) {
         break;
     }
 
-    if (qualifies) {
-      await prisma.userAchievement.create({
-        data: {
-          userId,
-          achievementId: a.id,
-        },
-      });
+   if (qualifies) {
+  console.log(`Unlocking achievement for user ${userId}: ${a.title}`);
 
-      // Reward XP if needed
-      if (a.xpReward > 0) {
-        await prisma.userProgress.update({
-          where: { userId },
-          data: { xp: { increment: a.xpReward } },
-        });
-      }
-    }
+  await prisma.userAchievement.create({
+    data: {
+      userId,
+      achievementId: a.id,
+    },
+  });
+
+  if (a.xpReward > 0) {
+    await prisma.userProgress.update({
+      where: { userId },
+      data: { xp: { increment: a.xpReward } },
+    });
+  }
+}
+
   }
 }

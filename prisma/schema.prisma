@@ -33,6 +33,7 @@ model CravingEvent {
   typeId    Int?       
   type      CravingType? @relation(fields: [typeId], references: [id])
   userId    String     // Clerk user ID to link cravings to users
+  resolvedAt DateTime?
 }
 
 model UserProgress {
@@ -84,5 +85,12 @@ enum AchievementType {
   XP
   CRAVING
   RESOLVED_CRAVING
+  FAST_RESOLUTION
   STREAK
+  RESISTED_CRAVING
+  JOURNAL
+  FEEDBACK
+  DAYS_ACTIVE
+  NO_CRAVINGS_DAY
+  DAILY_RESOLVED_CRAVINGS
 }
