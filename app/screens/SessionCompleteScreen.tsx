@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { View, Text, Pressable } from "react-native";
 import colors from "../utils/colors";
 import { useUser } from '@clerk/clerk-expo';
@@ -6,6 +6,9 @@ export default function SessionCompleteScreen({ route, navigation }: any) {
   const { user } = useUser(); // Clerk user
   const { timeSpent = 0 } = route.params || {};
   const seconds = Number(timeSpent) || 0;
+const [showXPReward, setShowXPReward] = useState(false);
+const [xpGained, setXpGained] = useState<number | null>(null);
+
 
   // Display format: if >= 60s, show minutes & seconds, else show seconds
   let displayTime = "";
@@ -20,24 +23,34 @@ export default function SessionCompleteScreen({ route, navigation }: any) {
 
    useEffect(() => {
     const sendXP = async () => {
-      try {
-        const response = await fetch("http://192.168.2.19:3000/api/session-complete", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            userId: user?.id,
-            timeSpent: seconds,
-          }),
-        });
+  try {
+    const response = await fetch("http://192.168.2.19:3000/api/session-complete", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        userId: user?.id,
+        timeSpent: seconds,
+      }),
+    });
 
-        const data = await response.json();
-        console.log("XP updated:", data);
-      } catch (err) {
-        console.error("XP update failed:", err);
-      }
-    };
+    const data = await response.json();
+console.log("XP updated:", data);
+
+setXpGained(data.xpGained); // ✅ update state
+setShowXPReward(true);
+
+setTimeout(() => {
+  setShowXPReward(false);
+}, 2000);
+
+
+  } catch (err) {
+    console.error("XP update failed:", err);
+  }
+};
+
 
     if (user?.id && seconds > 0) {
       sendXP();
@@ -49,6 +62,23 @@ export default function SessionCompleteScreen({ route, navigation }: any) {
       className="flex-1 justify-center items-center px-6"
       style={{ backgroundColor: colors.background }}
     >
+      {showXPReward && (
+  <View
+    className="absolute top-20 bg-[#FFD700] px-6 py-3 rounded-full shadow-lg"
+    style={{
+      zIndex: 999,
+      elevation: 10,
+      borderWidth: 1,
+      borderColor: "#FFF3B0",
+    }}
+  >
+   <Text className="text-lg font-bold text-center text-white">
+  +{xpGained ?? "?"} XP!
+</Text>
+
+  </View>
+)}
+
       <Text
         className="text-2xl font-semibold mb-4 text-center"
         style={{ color: colors.primary }}
@@ -77,3 +107,5 @@ export default function SessionCompleteScreen({ route, navigation }: any) {
     </View>
   );
 }
+
+

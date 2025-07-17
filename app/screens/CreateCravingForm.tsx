@@ -28,6 +28,9 @@ export default function CreateCravingForm({ navigation }: any) {
   const [type, setType] = useState("");
   const [cravingTypes, setCravingTypes] = useState<CravingType[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [xpGained, setXpGained] = useState<number | null>(null);
+const [showXPReward, setShowXPReward] = useState(false);
+
 
   const totalSteps = 4;
 
@@ -67,7 +70,7 @@ export default function CreateCravingForm({ navigation }: any) {
   }, []);
 
 const submitData = async () => {
- if (!user?.id) {
+  if (!user?.id) {
     Alert.alert("Error", "User not logged in.");
     return;
   }
@@ -83,9 +86,10 @@ const submitData = async () => {
         notes,
         resolved,
         type,
-        userId: user.id, // ✅ include userId
+        userId: user.id,
       }),
     });
+
 
     if (!response.ok) {
       const errorData = await response.json();
@@ -104,7 +108,19 @@ const submitData = async () => {
     setStep(1);
     if (cravingTypes.length > 0) setType(cravingTypes[0].name);
 
-    navigation.navigate("CravingList");
+    if (result?.xpGained) {
+      setXpGained(result.xpGained);
+      setShowXPReward(true);
+
+      // ✅ Wait 2s before navigating
+      setTimeout(() => {
+        setShowXPReward(false);
+        navigation.navigate("CravingList");
+      }, 2000);
+    } else {
+      navigation.navigate("CravingList");
+    }
+
   } catch (err) {
     console.error("Network error:", err);
     Alert.alert("Error", "Network error occurred.");
@@ -327,6 +343,24 @@ const submitData = async () => {
       className="flex-1"
       style={{ backgroundColor: colors.background }}
     >
+      {showXPReward && (
+  <View
+    className="absolute top-20 bg-[#FFD700] px-6 py-3 rounded-full shadow-lg"
+    style={{
+      zIndex: 999,
+      elevation: 10,
+      borderWidth: 1,
+      borderColor: "#FFF3B0",
+      alignSelf: "center",
+    }}
+  >
+    <Text className="text-lg font-bold text-center text-white">
+      +{xpGained ?? "?"} XP!
+    </Text>
+  </View>
+)}
+
+
       <ScrollView
         contentContainerStyle={{ flexGrow: 1, justifyContent: "center", paddingVertical: 48 }}
         className="px-6"

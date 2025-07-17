@@ -37,66 +37,71 @@ router.get('/', async (req: Request, res: Response) => {
 
 
 // POST create a new craving
+// POST create a new craving
 router.post('/', async (req: Request, res: Response): Promise<any> => {
   const result = cravingSchema.safeParse(req.body);
   if (!result.success) {
     return res.status(400).json({ errors: result.error.format() });
   }
 
-  // ⬅️  Grab userId too
   const { intensity, notes, resolved, type, userId } = result.data;
 
   try {
-    // 1. Make sure the craving type exists
     const cravingType = await prisma.cravingType.upsert({
       where:  { name: type },
       update: {},
       create: { name: type, isCustom: false },
     });
 
-    // 2. Create the craving linked to this user
     const newCraving = await prisma.cravingEvent.create({
       data: {
         intensity,
         notes,
         resolved,
-        userId,                    // ✅ now TypeScript knows what this is
+        userId,
         type: { connect: { id: cravingType.id } },
       },
       include: { type: true },
     });
 
+    // Base XP gained for creating craving
+    let xpGained = 5;
+
     await prisma.userProgress.upsert({
-  where: { userId },
-  update: { xp: { increment: 5 } },
-  create: { userId, xp: 5, level: 1 },
-});
+      where: { userId },
+      update: { xp: { increment: 5 } },
+      create: { userId, xp: 5, level: 1 },
+    });
 
-const user = await prisma.userProgress.findUnique({ where: { userId } });
-const newLevel = Math.floor(Math.sqrt(user!.xp / 10)) + 1;
+    const userProgress = await prisma.userProgress.findUnique({ where: { userId } });
+    const newLevel = Math.floor(Math.sqrt(userProgress!.xp / 10)) + 1;
 
-await prisma.userProgress.update({
-  where: { userId },
-  data: { level: newLevel },
-});
+    await prisma.userProgress.update({
+      where: { userId },
+      data: { level: newLevel },
+    });
 
-if (resolved) {
-  await prisma.userProgress.upsert({
-    where: { userId },
-    update: { xp: { increment: 10 } },
-    create: { userId, xp: 10, level: 1 },
-  });
+    if (resolved) {
+      xpGained += 10;
 
-  const user = await prisma.userProgress.findUnique({ where: { userId } });
-  const newLevel = Math.floor(Math.sqrt(user!.xp / 10)) + 1;
+      await prisma.userProgress.upsert({
+        where: { userId },
+        update: { xp: { increment: 10 } },
+        create: { userId, xp: 10, level: 1 },
+      });
 
-  await prisma.userProgress.update({
-    where: { userId },
-    data: { level: newLevel },
-  });
-}
+      const updatedUser = await prisma.userProgress.findUnique({ where: { userId } });
+      const updatedLevel = Math.floor(Math.sqrt(updatedUser!.xp / 10)) + 1;
 
-    res.status(201).json(newCraving);
+      await prisma.userProgress.update({
+        where: { userId },
+        data: { level: updatedLevel },
+      });
+    }
+
+    // Send back the craving and xpGained
+    res.status(201).json({ ...newCraving, xpGained });
+
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Failed to create craving' });

@@ -21,6 +21,9 @@ export default function HomeScreen({ navigation }: any) {
     type: string;
     streak: number;
   }>({ type: "", streak: 0 });
+  const [xpGained, setXpGained] = useState<number | null>(null);
+const [showXPReward, setShowXPReward] = useState(false);
+
 
   /** Helpers */
   const calculateLongestStreaksByType = (data: any[]) => {
@@ -69,7 +72,7 @@ export default function HomeScreen({ navigation }: any) {
     );
   };
 
- const doDailyCheckin = async () => {
+const doDailyCheckin = async () => {
   if (!user?.id) return;
 
   try {
@@ -79,16 +82,23 @@ export default function HomeScreen({ navigation }: any) {
       body: JSON.stringify({ userId: user.id }),
     });
 
-    const text = await response.text();  // get raw text
+    const text = await response.text();
     console.log('Raw daily check-in response:', text);
 
-    // Try parsing JSON only after logging raw text
     const data = JSON.parse(text);
     console.log('Daily check-in result:', data);
+
+    // 👇 show XP if provided
+    if (data?.xpGained) {
+      setXpGained(data.xpGained);
+      setShowXPReward(true);
+      setTimeout(() => setShowXPReward(false), 2000);
+    }
   } catch (err) {
     console.error('Daily check-in failed:', err);
   }
 };
+
 
 
   /** Reload data on focus */
@@ -139,12 +149,23 @@ export default function HomeScreen({ navigation }: any) {
       className="flex-1 justify-center items-center px-6"
       style={{ backgroundColor: colors.background }}
     >
-      <TouchableOpacity
-  onPress={doDailyCheckin}
-  style={{ padding: 10, backgroundColor: 'blue', marginTop: 20 }}
->
-  <Text style={{ color: 'white' }}>Test Daily Check-in(test)</Text>
-</TouchableOpacity>
+      {showXPReward && (
+  <View
+    className="absolute top-20 bg-[#FFD700] px-6 py-3 rounded-full shadow-lg"
+    style={{
+      zIndex: 999,
+      elevation: 10,
+      borderWidth: 1,
+      borderColor: "#FFF3B0",
+    }}
+  >
+    <Text className="text-lg font-bold text-center text-white">
+      +{xpGained ?? "?"} XP!
+    </Text>
+  </View>
+)}
+
+      
       {/* Header */}
       <View className="mb-6 items-center">
         <Text
