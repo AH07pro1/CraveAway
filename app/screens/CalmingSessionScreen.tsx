@@ -367,12 +367,12 @@ navigation.replace("SessionComplete", { timeSpent });
 
       {/* Timer */}
       <View className="items-center mb-6">
-        <Text
-          className="text-4xl font-extrabold drop-shadow"
-          style={{ color: colors.primary }}
-        >
-          {secondsLeft}s
-        </Text>
+        <Text className="text-4xl font-extrabold drop-shadow" style={{ color: colors.primary }}>
+  {secondsLeft < 60
+    ? `${secondsLeft}s`
+    : `${Math.floor(secondsLeft / 60)}:${String(secondsLeft % 60).padStart(2, "0")}`}
+</Text>
+
       </View>
 
       {/* Breathing Visual */}

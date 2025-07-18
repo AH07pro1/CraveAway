@@ -24,24 +24,24 @@ export default function SettingsScreen() {
   const [adding, setAdding] = useState(false);
   const [showList, setShowList] = useState(true);
 
-const fetchTypes = async () => {
-  if (!user || !user.id) {
-    Alert.alert("Error", "User not found.");
-    return;
-  }
-  setLoading(true);
-  try {
-    const res = await fetch(
-      `http://192.168.2.19:3000/api/craving-types?userId=${user.id}`
-    );
-    const data = await res.json();
-    setCravingTypes(data);
-  } catch {
-    Alert.alert("Error", "Failed to load craving types.");
-  } finally {
-    setLoading(false);
-  }
-};
+  const fetchTypes = async () => {
+    if (!user || !user.id) {
+      Alert.alert("Error", "User not found.");
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await fetch(
+        `http://192.168.2.19:3000/api/craving-types?userId=${user.id}`
+      );
+      const data = await res.json();
+      setCravingTypes(data);
+    } catch {
+      Alert.alert("Error", "Failed to load craving types.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     fetchTypes();
@@ -63,7 +63,7 @@ const fetchTypes = async () => {
       const res = await fetch("http://192.168.2.19:3000/api/craving-types", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-           body: JSON.stringify({ name: trimmed, userId: user!.id }),
+        body: JSON.stringify({ name: trimmed, userId: user!.id }),
       });
 
       if (!res.ok) {
@@ -83,12 +83,17 @@ const fetchTypes = async () => {
     }
   };
 
+  // Sort custom types on top
+  const sortedTypes = [...cravingTypes].sort((a, b) => {
+    if (a.isCustom === b.isCustom) return 0;
+    return a.isCustom ? -1 : 1;
+  });
+
   return (
     <SafeAreaView
       className="flex-1"
       style={{ backgroundColor: colors.background }}
     >
-      {/* Title */}
       <View
         style={{ paddingTop: 48, paddingBottom: 12 }}
         className="items-center"
@@ -109,7 +114,7 @@ const fetchTypes = async () => {
           contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40 }}
           keyboardShouldPersistTaps="handled"
         >
-          {/* Add New Type Card */}
+          {/* Add New Type */}
           <View
             className="mb-5 rounded-2xl p-5 shadow-md"
             style={{
@@ -157,7 +162,7 @@ const fetchTypes = async () => {
             </Pressable>
           </View>
 
-          {/* Type List */}
+          {/* Craving Type List */}
           <Pressable
             onPress={() => setShowList((v) => !v)}
             className="mb-3 flex-row justify-between items-center"
@@ -179,7 +184,7 @@ const fetchTypes = async () => {
             <>
               {loading ? (
                 <ActivityIndicator size="large" color={colors.primary} />
-              ) : cravingTypes.length === 0 ? (
+              ) : sortedTypes.length === 0 ? (
                 <Text
                   className="text-center"
                   style={{ color: colors.textSecondary }}
@@ -187,7 +192,7 @@ const fetchTypes = async () => {
                   No craving types found.
                 </Text>
               ) : (
-                cravingTypes.map((type) => (
+                sortedTypes.map((type) => (
                   <View
                     key={type.name}
                     className="rounded-xl p-4 mb-3 shadow-sm flex-row items-center justify-between"

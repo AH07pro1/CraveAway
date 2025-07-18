@@ -15,6 +15,40 @@ import Slider from "@react-native-community/slider";
 import { Picker } from "@react-native-picker/picker";
 import { useUser } from "@clerk/clerk-expo";
 
+const formatCravingDate = (dateString: string): string => {
+  const date = new Date(dateString);
+  const now = new Date();
+
+  const isToday = date.toDateString() === now.toDateString();
+
+  const yesterday = new Date();
+  yesterday.setDate(now.getDate() - 1);
+  const isYesterday = date.toDateString() === yesterday.toDateString();
+
+  const oneWeekAgo = new Date();
+  oneWeekAgo.setDate(now.getDate() - 7);
+
+  const timeString = date.toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+  if (isToday) return `Today at ${timeString}`;
+  if (isYesterday) return `Yesterday at ${timeString}`;
+  if (date > oneWeekAgo) {
+    return `${date.toLocaleDateString(undefined, {
+      weekday: "long",
+    })} at ${timeString}`;
+  }
+
+  return `${date.toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  })} at ${timeString}`;
+};
+
+
 type CravingEvent = {
   id: number;
   createdAt: string;
@@ -433,8 +467,9 @@ export default function CravingListScreen({ navigation }: any) {
               </View>
 
               <Text className="text-xs" style={{ color: "#94a3b8" }}>
-                {new Date(craving.createdAt).toLocaleString()}
-              </Text>
+  {formatCravingDate(craving.createdAt)}
+</Text>
+
             </Pressable>
           ))
         )}
