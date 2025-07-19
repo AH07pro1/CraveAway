@@ -9,8 +9,7 @@ import {
   LayoutAnimation,
 } from 'react-native';
 import { format, parseISO, subDays } from 'date-fns';
-import { BarChart, LineChart } from 'react-native-gifted-charts';
-import Icon from 'react-native-vector-icons/Ionicons';
+import { BarChart } from 'react-native-gifted-charts';
 import colors from '../utils/colors';
 import { useUser } from '@clerk/clerk-expo';
 
@@ -24,26 +23,16 @@ export default function StatsScreen({ navigation }: any) {
   const [streak, setStreak] = useState(0);
   const [longestStreak, setLongestStreak] = useState(0);
   const [view, setView] = useState<'weekly' | 'monthly' | 'all'>('weekly');
-  const [graphType, setGraphType] = useState<'bar' | 'line'>('bar');
   const [tooltipIndex, setTooltipIndex] = useState<number | null>(null);
-  const [tooltipType, setTooltipType] = useState<'resist' | 'gaveIn' | null>(null);
+  const [tooltipType, setTooltipType] = useState<'resist' | 'gaveIn' | 'total' | null>(null);
 
-  const viewDaysMap = {
-    weekly: 7,
-    monthly: 30,
-    all: 90, // Limit all to 90 days for readability
-  };
+  // New states for cravings summary
+  const [totalCravings, setTotalCravings] = useState(0);
+  const [resistCount, setResistCount] = useState(0);
+  const [gaveInCount, setGaveInCount] = useState(0);
+  const [resistRatio, setResistRatio] = useState('0.0');
 
-  // Get dates for current view, always ending today
-  function getDateRange() {
-    const days = viewDaysMap[view];
-    const result: string[] = [];
-    for (let i = days - 1; i >= 0; i--) {
-      result.push(format(subDays(new Date(), i), 'yyyy-MM-dd'));
-    }
-    return result;
-  }
-
+  // Calculate current streak
   function calculateStreak(data: any[]) {
     const gaveInDates: { [date: string]: boolean } = {};
     data.forEach((c) => {
@@ -65,6 +54,7 @@ export default function StatsScreen({ navigation }: any) {
     return streakCount;
   }
 
+  // Calculate longest streak
   function calculateLongestStreak(data: any[]) {
     const gaveInDates: { [date: string]: boolean } = {};
     data.forEach((c) => {
@@ -114,6 +104,16 @@ export default function StatsScreen({ navigation }: any) {
         setDailyStats(stats);
         setAverageIntensity(Number((totalIntensity / data.length).toFixed(1)));
 
+        const total = data.length;
+        const resist = data.filter((c) => c.resolved).length;
+        const gaveIn = total - resist;
+        const ratio = total > 0 ? ((resist / total) * 100).toFixed(1) : '0.0';
+
+        setTotalCravings(total);
+        setResistCount(resist);
+        setGaveInCount(gaveIn);
+        setResistRatio(ratio);
+
         setStreak(calculateStreak(data));
         setLongestStreak(calculateLongestStreak(data));
       } catch (err) {
@@ -127,70 +127,161 @@ export default function StatsScreen({ navigation }: any) {
     return unsubscribe;
   }, [navigation, user?.id]);
 
-  // Prepare data for chart
-  const selectedDates = getDateRange();
+  // === Aggregation helpers ===
 
-  // Format label as "Mon 07/14"
-  const formattedLabels = selectedDates.map((date) => {
-    const dayName = format(parseISO(date), 'EEE'); // Mon, Tue, ...
-    const mmdd = format(parseISO(date), 'MM/dd');
-    return `${dayName} ${mmdd}`;
+  function getWeeklyLabels() {
+    const days = 7;
+    const result: string[] = [];
+    for (let i = days - 1; i >= 0; i--) {
+      result.push(format(subDays(new Date(), i), 'yyyy-MM-dd'));
+    }
+    return result;
+  }
+
+  function getWeeklyChartData(dailyStats: any, selectedDates: string[]) {
+    return selectedDates.map((date) => {
+      const d = dailyStats[date] || { resist: 0, gaveIn: 0, total: 0 };
+      return { label: date, resist: d.resist, gaveIn: d.gaveIn, total: d.total };
+    });
+  }
+
+  function aggregateWeeklyCounts(cravings: any[], year: number, month: number) {
+    const weeksCount: number[] = [0, 0, 0, 0, 0, 0];
+    cravings.forEach((c) => {
+      const date = parseISO(c.createdAt);
+      if (date.getFullYear() === year && date.getMonth() === month) {
+        const day = date.getDate();
+        const week = Math.ceil(day / 7);
+        weeksCount[week - 1]++;
+      }
+    });
+    while (weeksCount.length && weeksCount[weeksCount.length - 1] === 0) {
+      weeksCount.pop();
+    }
+    return weeksCount;
+  }
+
+  function aggregateMonthlyCounts(cravings: any[], year: number) {
+    const monthsCount = new Array(12).fill(0);
+    cravings.forEach((c) => {
+      const date = parseISO(c.createdAt);
+      if (date.getFullYear() === year) {
+        monthsCount[date.getMonth()]++;
+      }
+    });
+    return monthsCount;
+  }
+
+  function getMonthlyLabelsAndData(cravings: any[]) {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = today.getMonth();
+
+    const weeklyCounts = aggregateWeeklyCounts(cravings, year, month);
+    const labels = weeklyCounts.map((_, i) => `Week ${i + 1}`);
+
+    const data = weeklyCounts.map((count) => ({
+      label: '',
+      resist: 0,
+      gaveIn: 0,
+      total: count,
+    }));
+
+    return { labels, data };
+  }
+
+  function getYearlyLabelsAndData(cravings: any[]) {
+    const year = new Date().getFullYear();
+    const monthlyCounts = aggregateMonthlyCounts(cravings, year);
+
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+    const labels = monthNames;
+
+    const data = monthlyCounts.map((count) => ({
+      label: '',
+      resist: 0,
+      gaveIn: 0,
+      total: count,
+    }));
+
+    return { labels, data };
+  }
+
+  let formattedLabels: string[] = [];
+  let chartData: any[] = [];
+
+  if (view === 'weekly') {
+  const selectedDates = getWeeklyLabels(); // returns dates like '2025-07-19'
+  chartData = getWeeklyChartData(dailyStats, selectedDates);
+  formattedLabels = selectedDates.map((date) => {
+    // convert to day abbreviation e.g. 'Mon'
+    return format(parseISO(date), 'EEE');
   });
+}
+else if (view === 'monthly') {
+    const { labels, data } = getMonthlyLabelsAndData(cravings);
+    formattedLabels = labels;
+    chartData = data;
+  } else {
+    const { labels, data } = getYearlyLabelsAndData(cravings);
+    formattedLabels = labels;
+    chartData = data;
+  }
 
-  // Build chart data arrays for resist and gaveIn
-  const chartData = selectedDates.map((date) => {
-    const d = dailyStats[date] || { resist: 0, gaveIn: 0 };
-    return {
-      label: date,
-      resist: d.resist,
-      gaveIn: d.gaveIn,
-    };
-  });
+  const baseBarWidth = 18;
+  const baseSpacing = 12;
+  const daysCount = chartData.length;
+  const groupWidth = 2 * baseBarWidth + baseSpacing;
+  const viewportWidth = 320;
 
-  // For Bar chart, create grouped bars (resist + gaveIn side by side)
-  const chartBarData = chartData.flatMap((item) => [
+  let totalWidth;
+  if (view === 'weekly') {
+    totalWidth = daysCount * groupWidth + baseSpacing;
+  } else {
+    totalWidth = Math.max(daysCount * (baseBarWidth + baseSpacing) + baseSpacing, 320);
+  }
+
+  const initialSpacing = Math.max(
+    totalWidth - viewportWidth / 2 - (view === 'weekly' ? groupWidth / 2 : baseBarWidth / 2),
+    0
+  );
+
+  let chartBarData;
+
+ if (view === 'weekly') {
+  chartBarData = chartData.flatMap((item, i) => [
     {
-      label: item.label,
+      label: formattedLabels[i],  // e.g. 'Mon', 'Tue', etc. — use formattedLabels here
       value: item.resist,
-      frontColor: '#16a34a', // green for resist
+      frontColor: '#16a34a',
     },
     {
-      label: '', // no label for second bar in group
+      label: '',  // no label on gaveIn bars
       value: item.gaveIn,
-      frontColor: '#ef4444', // red for gave in
+      frontColor: '#ef4444',
     },
   ]);
+}
+ else {
+    chartBarData = chartData.map((item, index) => ({
+      label: formattedLabels[index],
+      value: item.total,
+      frontColor: '#3b82f6',
+    }));
+  }
 
-  // For Line chart, prepare two data lines
-  const chartLineData = [
-    {
-      data: chartData.map((d) => ({ value: d.resist, label: d.label })),
-      color: '#16a34a',
-    },
-    {
-      data: chartData.map((d) => ({ value: d.gaveIn, label: d.label })),
-      color: '#ef4444',
-    },
-  ];
-
-  // Calculate initialSpacing to center today on screen for weekly and monthly (graph width depends on spacing and bars)
-  // Assuming approx 40 spacing + 22 bar width * number of groups for bar chart
-  // For line chart, spacing is ~40 between points
-  const daysCount = selectedDates.length;
-  const spacing = graphType === 'bar' ? 16 : 40;
-  const barWidth = 22;
-
-  // For bar chart: group of 2 bars per date
-  // totalWidth = daysCount * (2 * barWidth + spacing)
-  // To center last group (today) in viewport of width ~ screen width (say 320)
-  // initialSpacing = totalWidth - viewportWidth / 2 - half group width
-  // We can hardcode viewport width or use Dimensions API (simplified here)
-
-  const viewportWidth = 320; // adjust if needed
-  const groupWidth = 2 * barWidth + spacing;
-  const totalWidth = daysCount * groupWidth + spacing; // spacing at start too
-  // center last group (today)
-  const initialSpacing = Math.max(totalWidth - viewportWidth / 2 - groupWidth / 2, 0);
+  const getTooltipValue = (index: number, type: 'resist' | 'gaveIn' | 'total') => {
+    if (view === 'weekly') {
+      const dateIndex = Math.floor(index / 2);
+      if (dateIndex >= chartData.length) return null;
+      if (type === 'resist') return chartData[dateIndex].resist;
+      if (type === 'gaveIn') return chartData[dateIndex].gaveIn;
+    } else {
+      if (type === 'total') return chartData[index]?.total ?? null;
+    }
+    return null;
+  };
 
   if (loading) {
     return (
@@ -203,43 +294,21 @@ export default function StatsScreen({ navigation }: any) {
     );
   }
 
-  // Helper for tooltip content
-  const getTooltipValue = (index: number, type: 'resist' | 'gaveIn') => {
-    if (graphType === 'bar') {
-      // Each date has 2 bars => index/2 is date index, index%2 is resist or gaveIn
-      const dateIndex = Math.floor(index / 2);
-      if (dateIndex >= chartData.length) return null;
-      if (type === 'resist') return chartData[dateIndex].resist;
-      if (type === 'gaveIn') return chartData[dateIndex].gaveIn;
-    } else {
-      // line chart tooltip shows value directly
-      if (type === 'resist') return chartLineData[0].data[index]?.value ?? null;
-      if (type === 'gaveIn') return chartLineData[1].data[index]?.value ?? null;
-    }
-    return null;
-  };
-
   return (
-    <SafeAreaView
-      className="flex-1"
-      style={{ backgroundColor: colors.background }}
-    >
-      {/* Title with paddingTop and paddingBottom like your SettingsScreen */}
+    <SafeAreaView className="flex-1" style={{ backgroundColor: colors.background }}>
+      {/* Title */}
       <View style={{ paddingTop: 48, paddingBottom: 12 }} className="items-center">
-        <Text
-          className="text-3xl font-extrabold text-center"
-          style={{ color: colors.primary }}
-        >
+        <Text className="text-3xl font-extrabold text-center" style={{ color: colors.primary }}>
           🧠 Craving Stats
         </Text>
       </View>
 
       <ScrollView
-        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40 }}
+        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 20, flexGrow: 1 }}
         showsVerticalScrollIndicator={false}
       >
         {/* View toggles */}
-        <View className="flex-row justify-center gap-2 mb-4">
+        <View className="flex-row justify-center gap-4 mb-6">
           {['weekly', 'monthly', 'all'].map((v) => (
             <Pressable
               key={v}
@@ -249,73 +318,112 @@ export default function StatsScreen({ navigation }: any) {
                 setTooltipIndex(null);
                 setTooltipType(null);
               }}
-              className={`px-4 py-1.5 rounded-full ${
-                view === v ? 'bg-blue-500' : 'bg-gray-200'
-              }`}
+              className={`px-5 py-2 rounded-full ${view === v ? 'bg-blue-600' : 'bg-gray-200'}`}
             >
-              <Text
-                className={`font-semibold ${
-                  view === v ? 'text-white' : 'text-gray-800'
-                }`}
-              >
+              <Text className={`font-semibold ${view === v ? 'text-white' : 'text-gray-800'}`}>
                 {v.charAt(0).toUpperCase() + v.slice(1)}
               </Text>
             </Pressable>
           ))}
         </View>
 
-        {/* Graph type toggles */}
-        <View className="flex-row justify-center mb-6">
-          {['bar', 'line'].map((g) => (
-            <Pressable
-              key={g}
-              onPress={() => {
-                setGraphType(g as 'bar' | 'line');
-                setTooltipIndex(null);
-                setTooltipType(null);
-              }}
-              className={`px-4 py-1.5 mx-1 rounded-full ${
-                graphType === g ? 'bg-purple-600' : 'bg-gray-300'
-              }`}
-            >
-              <Text
-                className={`${
-                  graphType === g ? 'text-white' : 'text-gray-800'
-                } font-semibold`}
-              >
-                {g === 'bar' ? 'Bar' : 'Line'}
-              </Text>
-            </Pressable>
-          ))}
+        {/* Cravings summary card */}
+        <View className="bg-white p-6 rounded-xl shadow mb-8 flex-row justify-around">
+          <View className="items-center">
+            <Text className="text-xl font-semibold" style={{ color: colors.primary }}>
+              {totalCravings}
+            </Text>
+            <Text className="text-gray-600">Total Cravings</Text>
+          </View>
+          <View className="items-center">
+            <Text className="text-xl font-semibold" style={{ color: '#16a34a' }}>
+              {resistCount}
+            </Text>
+            <Text className="text-gray-600">Resisted</Text>
+          </View>
+          <View className="items-center">
+            <Text className="text-xl font-semibold" style={{ color: '#ef4444' }}>
+              {gaveInCount}
+            </Text>
+            <Text className="text-gray-600">Gave In</Text>
+          </View>
+          <View className="items-center">
+            <Text className="text-xl font-semibold" style={{ color: colors.primary }}>
+              {resistRatio}%
+            </Text>
+            <Text className="text-gray-600">Resist Ratio</Text>
+          </View>
+        </View>
+
+        {/* Streak and average intensity display */}
+        <View className="bg-white p-6 rounded-xl shadow flex-row justify-around mb-8">
+          <View className="items-center">
+            <Text className="text-xl font-semibold" style={{ color: colors.primary }}>
+              {streak}
+            </Text>
+            <Text className="text-gray-600">Current Streak</Text>
+          </View>
+          <View className="items-center">
+            <Text className="text-xl font-semibold" style={{ color: colors.primary }}>
+              {longestStreak}
+            </Text>
+            <Text className="text-gray-600">Longest Streak</Text>
+          </View>
+          <View className="items-center">
+            <Text className="text-xl font-semibold" style={{ color: colors.primary }}>
+              {averageIntensity}
+            </Text>
+            <Text className="text-gray-600">Avg Intensity</Text>
+          </View>
+        </View>
+
+        {/* Button to navigate to Streak Details screen */}
+        <View className="mb-6 items-center">
+        <Pressable
+  onPress={() => navigation.navigate('StreakDetails', { cravings })}
+  className="bg-blue-600 px-6 py-3 rounded-full shadow"
+>
+  <Text className="text-white font-semibold text-lg">View Streak Details</Text>
+</Pressable>
+
         </View>
 
         {/* Chart container */}
-        <View className="bg-white p-5 rounded-xl shadow mb-8">
+        <View
+          className="bg-white p-5 rounded-xl shadow"
+          style={{ minWidth: viewportWidth }}
+        >
           <Text className="text-lg font-semibold text-center mb-4 text-gray-800">
-            Resist (green) vs Gave In (red)
+            {view === 'weekly' ? 'Resist (green) vs Gave In (red)' : 'Total Cravings'}
           </Text>
 
-          {graphType === 'bar' ? (
-            <BarChart
-              data={chartBarData}
-              barWidth={barWidth}
-              spacing={spacing}
-              noOfSections={4}
-              maxValue={Math.max(...chartBarData.map((d) => d.value), 1)}
-              yAxisTextStyle={{ color: '#666', fontSize: 12 }}
-              xAxisLabelTextStyle={{ color: '#444', fontSize: 11 }}
-              xAxisLabelTextRotate={-45}
-              isAnimated
-              initialSpacing={initialSpacing}
-              showVerticalLines={false}
-              hideDataPoints
-              onPress={(index) => {
-                setTooltipIndex(index);
+          <BarChart
+            data={chartBarData}
+            barWidth={baseBarWidth}
+            spacing={view === 'monthly' ? baseSpacing * 2 : baseSpacing}
+
+            noOfSections={4}
+            maxValue={Math.max(...chartBarData.map((d) => d.value), 1)}
+            yAxisTextStyle={{ color: '#666', fontSize: 12 }}
+            xAxisLabelTextStyle={{ color: '#444', fontSize: 11 }}
+            xAxisLabelTextRotate={view === 'weekly' ? -45 : 0}
+            isAnimated
+            initialSpacing={initialSpacing}
+            showVerticalLines={false}
+            hideDataPoints
+            onPress={(index) => {
+              setTooltipIndex(index);
+              if (view === 'weekly') {
                 setTooltipType(index % 2 === 0 ? 'resist' : 'gaveIn');
-              }}
-              renderTooltip={(index) => {
-                if (tooltipIndex !== index) return null;
-                const val = getTooltipValue(index, tooltipType!);
+              } else {
+                setTooltipType('total');
+              }
+            }}
+            renderTooltip={(index) => {
+              if (tooltipIndex !== index) return null;
+              if (view === 'weekly') {
+                if (!tooltipType) return null;
+                const val = getTooltipValue(index, tooltipType);
                 return (
                   <View
                     style={{
@@ -332,124 +440,34 @@ export default function StatsScreen({ navigation }: any) {
                     </Text>
                   </View>
                 );
-              }}
-              xAxisLabelTextFormatter={(label, index) => {
-                // Show day of week + mm/dd
-                return formattedLabels[Math.floor(index / 2)] || '';
-              }}
-            />
-          ) : (
-            <>
-              <LineChart
-                data={chartLineData[0].data}
-                color={chartLineData[0].color}
-                curved
-                thickness={4}
-                yAxisTextStyle={{ color: '#666', fontSize: 12 }}
-                xAxisLabelTextStyle={{ color: '#444', fontSize: 11 }}
-                spacing={spacing}
-                hideDataPoints={false}
-                showVerticalLines={false}
-                initialSpacing={initialSpacing}
-                onPress={(index) => {
-                  setTooltipIndex(index);
-                  setTooltipType('resist');
-                }}
-                renderTooltip={(index) => {
-                  if (tooltipIndex !== index || tooltipType !== 'resist') return null;
-                  const val = getTooltipValue(index, 'resist');
-                  return (
-                    <View
-                      style={{
-                        padding: 6,
-                        backgroundColor: 'rgba(0,0,0,0.7)',
-                        borderRadius: 6,
-                        position: 'absolute',
-                        top: -40,
-                        left: -20,
-                      }}
-                    >
-                      <Text style={{ color: 'white', fontWeight: 'bold' }}>
-                        Resist: {val}
-                      </Text>
-                    </View>
-                  );
-                }}
-              />
-              <LineChart
-                data={chartLineData[1].data}
-                color={chartLineData[1].color}
-                curved
-                thickness={4}
-                yAxisTextStyle={{ color: 'transparent' }}
-                xAxisLabelTextStyle={{ color: 'transparent' }}
-                spacing={spacing}
-                hideDataPoints={false}
-                showVerticalLines={false}
-                initialSpacing={initialSpacing}
-                onPress={(index) => {
-                  setTooltipIndex(index);
-                  setTooltipType('gaveIn');
-                }}
-                renderTooltip={(index) => {
-                  if (tooltipIndex !== index || tooltipType !== 'gaveIn') return null;
-                  const val = getTooltipValue(index, 'gaveIn');
-                  return (
-                    <View
-                      style={{
-                        padding: 6,
-                        backgroundColor: 'rgba(0,0,0,0.7)',
-                        borderRadius: 6,
-                        position: 'absolute',
-                        top: -40,
-                        left: -20,
-                      }}
-                    >
-                      <Text style={{ color: 'white', fontWeight: 'bold' }}>
-                        Gave In: {val}
-                      </Text>
-                    </View>
-                  );
-                }}
-                containerStyle={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}
-              />
-            </>
-          )}
-        </View>
+              } else {
+                const val = getTooltipValue(index, 'total');
+                return (
+                  <View
+                    style={{
+                      padding: 6,
+                      backgroundColor: 'rgba(0,0,0,0.7)',
+                      borderRadius: 6,
+                      position: 'absolute',
+                      top: -40,
+                      left: -10,
+                    }}
+                  >
+                    <Text style={{ color: 'white', fontWeight: 'bold' }}>Total: {val}</Text>
+                  </View>
+                );
+              }
+            }}
+           xAxisLabelTextFormatter={(label: string, index: number) => {
+  if (view === 'weekly') {
+    return formattedLabels[index] || '';
+  }
+  return label;
+}}
 
-        {/* Summary */}
-        <View className="bg-white rounded-2xl p-5 shadow mb-8">
-          <Text className="text-base text-gray-800 mb-2">
-            <Text className="font-semibold">Total Cravings:</Text> {cravings.length}
-          </Text>
-          <Text className="text-base text-gray-800 mb-2">
-            <Text className="font-semibold">Resolved:</Text>{' '}
-            {cravings.filter((c) => c.resolved).length}
-          </Text>
-          <Text className="text-base text-gray-800">
-            <Text className="font-semibold">Average Intensity:</Text> {averageIntensity}
-          </Text>
-        </View>
 
-        {/* Streak card */}
-        <Pressable
-          onPress={() => navigation.navigate('StreakDetails', { cravings })}
-          className="bg-orange-100 rounded-xl p-5 flex-row justify-between items-center shadow"
-          style={{ elevation: 2 }}
-        >
-          <View>
-            <Text className="text-orange-800 font-bold text-xl mb-1">
-              🔥 {streak}-Day Current Streak
-            </Text>
-            <Text className="text-orange-700 text-sm mb-1">
-              Longest Streak: {longestStreak} days
-            </Text>
-            <Text className="text-orange-700 text-sm">
-              Tap to see detailed streak info
-            </Text>
-          </View>
-          <Icon name="chevron-forward" size={26} color="#fb923c" />
-        </Pressable>
+          />
+        </View>
       </ScrollView>
     </SafeAreaView>
   );

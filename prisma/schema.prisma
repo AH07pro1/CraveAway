@@ -50,47 +50,47 @@ model UserDailyCheckin {
   @@unique([userId, date])
 }
 
-// -------------------------------------------
-model Achievement {
-  id          Int     @id @default(autoincrement())
-  title       String   @unique 
-  description String
-  type        AchievementType
-  value       Int     // XP target, number of cravings, etc.
-  xpReward    Int     @default(0)
-  badge       Badge?  @relation(fields: [badgeId], references: [id])
-  badgeId     Int?
-  userAchievements UserAchievement[] // Relation to UserAchievement
-}
+// // -------------------------------------------
+// model Achievement {
+//   id          Int     @id @default(autoincrement())
+//   title       String   @unique 
+//   description String
+//   type        AchievementType
+//   value       Int     // XP target, number of cravings, etc.
+//   xpReward    Int     @default(0)
+//   badge       Badge?  @relation(fields: [badgeId], references: [id])
+//   badgeId     Int?
+//   userAchievements UserAchievement[] // Relation to UserAchievement
+// }
 
-model Badge {
-  id          Int    @id @default(autoincrement())
-  title       String
-  description String
-  icon        String // URL or file name
-  achievements Achievement[] // Relation to Achievement
-}
+// model Badge {
+//   id          Int    @id @default(autoincrement())
+//   title       String
+//   description String
+//   icon        String // URL or file name
+//   achievements Achievement[] // Relation to Achievement
+// }
 
-model UserAchievement {
-  id             Int     @id @default(autoincrement())
-  userId         String
-  achievementId  Int
-  achievedAt     DateTime @default(now())
-  achievement    Achievement @relation(fields: [achievementId], references: [id])
+// model UserAchievement {
+//   id             Int     @id @default(autoincrement())
+//   userId         String
+//   achievementId  Int
+//   achievedAt     DateTime @default(now())
+//   achievement    Achievement @relation(fields: [achievementId], references: [id])
 
-  @@unique([userId, achievementId])
-}
+//   @@unique([userId, achievementId])
+// }
 
-enum AchievementType {
-  XP
-  CRAVING
-  RESOLVED_CRAVING
-  FAST_RESOLUTION
-  STREAK
-  RESISTED_CRAVING
-  JOURNAL
-  FEEDBACK
-  DAYS_ACTIVE
-  NO_CRAVINGS_DAY
-  DAILY_RESOLVED_CRAVINGS
-}
+// enum AchievementType {
+//   XP
+//   CRAVING
+//   RESOLVED_CRAVING
+//   FAST_RESOLUTION
+//   STREAK
+//   RESISTED_CRAVING
+//   JOURNAL
+//   FEEDBACK
+//   DAYS_ACTIVE
+//   NO_CRAVINGS_DAY
+//   DAILY_RESOLVED_CRAVINGS
+// }

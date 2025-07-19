@@ -41,9 +41,6 @@ export default function ProgressScreen() {
         useNativeDriver: false,
       }).start();
 
-      const achRes = await fetch(`http://192.168.2.19:3000/api/achievements/${user.id}`);
-      const achData = await achRes.json();
-      setAchievements(achData);
     } catch (err) {
       console.error('Error fetching progress or achievements', err);
     } finally {
@@ -57,13 +54,6 @@ export default function ProgressScreen() {
     }, [user?.id])
   );
 
-  const formatProgress = (ach) => {
-    const { currentValue, value, type } = ach;
-    if (type === 'XP') return `${currentValue} / ${value} XP`;
-    if (type === 'CRAVING') return `${currentValue} / ${value} cravings`;
-    if (type === 'RESOLVED_CRAVING') return `${currentValue} / ${value} resolved cravings`;
-    return '';
-  };
 
   if (loading) {
     return (
@@ -114,50 +104,7 @@ export default function ProgressScreen() {
           </Text>
         </View>
 
-        <Text style={{ fontSize: 22, fontWeight: 'bold', color: colors.primary, marginVertical: 16 }}>
-          🏆 Achievements
-        </Text>
-
-        {achievements.length === 0 ? (
-          <Text style={{ color: colors.textSecondary }}>No achievements yet.</Text>
-        ) : (
-          <FlatList
-            data={achievements}
-            keyExtractor={(item) => item.id?.toString() ?? Math.random().toString()}
-            contentContainerStyle={{ paddingBottom: 20 }}
-            scrollEnabled={false}
-            style={{ width: '100%' }}
-            renderItem={({ item }) => (
-              <View
-                style={{
-                  padding: 16,
-                  marginBottom: 12,
-                  backgroundColor: item.unlocked ? '#D1FAE5' : '#F5F5F5',
-                  borderRadius: 12,
-                  shadowColor: '#000',
-                  shadowOffset: { width: 0, height: 2 },
-                  shadowOpacity: 0.1,
-                  shadowRadius: 4,
-                  elevation: 3,
-                }}
-              >
-                <Text style={{ fontWeight: '700', fontSize: 16, color: colors.primary }}>
-                  {item.title}
-                </Text>
-                <Text style={{ color: colors.textSecondary, marginTop: 4 }}>{item.description}</Text>
-                <Text style={{
-                  marginTop: 6,
-                  fontWeight: '600',
-                  color: item.unlocked ? 'green' : '#666',
-                }}>
-                  {item.unlocked
-                    ? `✅ Unlocked (+${item.xpReward} XP)`
-                    : `🔒 Locked — Progress: ${formatProgress(item)}`}
-                </Text>
-              </View>
-            )}
-          />
-        )}
+       
       </ScrollView>
     </SafeAreaView>
   );
