@@ -4,26 +4,50 @@ import {
   Text,
   ActivityIndicator,
   Animated,
-  FlatList,
   ScrollView,
   SafeAreaView,
-  Dimensions,
 } from 'react-native';
 import { useUser } from '@clerk/clerk-expo';
 import { useFocusEffect } from '@react-navigation/native';
 import colors from '../utils/colors';
-
-const { width } = Dimensions.get('window');
 
 export default function ProgressScreen() {
   const { user } = useUser();
   const [loading, setLoading] = useState(true);
   const [xp, setXP] = useState(0);
   const [level, setLevel] = useState(1);
-  const [achievements, setAchievements] = useState([]);
+  const [badges, setBadges] = useState<string[]>([]);
   const progressAnim = useRef(new Animated.Value(0)).current;
 
   const nextLevelXP = Math.pow(level, 2) * 10;
+ function getBadges(level: number): string[] {
+  const badges: string[] = [];
+
+  if (level >= 1) badges.push("🧭 Newcomer");
+  if (level >= 2) badges.push("🌱 Hopeful");
+  if (level >= 5) badges.push("🎯 Focused");
+  if (level >= 8) badges.push("🧗 Climber");
+  if (level >= 11) badges.push("🥊 Fighter");
+  if (level >= 14) badges.push("🔥 Dedicated");
+  if (level >= 17) badges.push("🌍 Grounded");
+  if (level >= 20) badges.push("🛡️ Guardian");
+  if (level >= 23) badges.push("🔁 Streak Master");
+  if (level >= 26) badges.push("🧱 Resister");
+  if (level >= 29) badges.push("🏆 Champion");
+  if (level >= 32) badges.push("🧠 Mind Master");
+  if (level >= 35) badges.push("💥 Craving Crusher");
+  if (level >= 38) badges.push("🚀 Trailblazer");
+  if (level >= 41) badges.push("🧭 Pathfinder");
+  if (level >= 44) badges.push("🔆 Light Bearer");
+  if (level >= 47) badges.push("⚔️ Addiction Slayer");
+  if (level >= 50) badges.push("🐉 Legend");
+
+  return badges;
+}
+
+
+
+
 
   const fetchProgress = async () => {
     if (!user?.id) return;
@@ -34,6 +58,7 @@ export default function ProgressScreen() {
       const data = await res.json();
       setXP(data.xp);
       setLevel(data.level);
+      setBadges(getBadges(data.level));
 
       Animated.timing(progressAnim, {
         toValue: (data.xp / nextLevelXP) * 100,
@@ -42,7 +67,7 @@ export default function ProgressScreen() {
       }).start();
 
     } catch (err) {
-      console.error('Error fetching progress or achievements', err);
+      console.error('Error fetching progress', err);
     } finally {
       setLoading(false);
     }
@@ -53,7 +78,6 @@ export default function ProgressScreen() {
       fetchProgress();
     }, [user?.id])
   );
-
 
   if (loading) {
     return (
@@ -68,18 +92,20 @@ export default function ProgressScreen() {
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
       <ScrollView
         contentContainerStyle={{
-          paddingTop: 48,
-          paddingHorizontal: 24,
-          paddingBottom: 40,
+          flexGrow: 1,
+          justifyContent: 'center',
           alignItems: 'center',
+          paddingHorizontal: 24,
+          paddingVertical: 40,
         }}
       >
-        <Text style={{ fontSize: 28, fontWeight: 'bold', color: colors.primary, marginBottom: 24 }}>
+        <Text style={{ fontSize: 28, fontWeight: 'bold', color: colors.primary, marginBottom: 32 }}>
           🌟 Your Progress
         </Text>
 
-        <View style={{ width: '100%', marginBottom: 16 }}>
+        <View style={{ width: '100%', alignItems: 'center', marginBottom: 30 }}>
           <View style={{
+            width: '100%',
             height: 20,
             backgroundColor: '#e0e0e0',
             borderRadius: 10,
@@ -96,15 +122,42 @@ export default function ProgressScreen() {
               }}
             />
           </View>
-          <Text style={{ marginTop: 8, fontSize: 16, color: colors.textMain }}>
+
+          <Text style={{ marginTop: 12, fontSize: 16, color: colors.textMain }}>
             {xp} / {nextLevelXP} XP
           </Text>
-          <Text style={{ fontSize: 18, fontWeight: '600', color: colors.textMain, marginTop: 4 }}>
+
+          <Text style={{ fontSize: 20, fontWeight: '600', color: colors.textMain, marginTop: 6 }}>
             Level {level}
           </Text>
         </View>
 
-       
+        {/* Badges */}
+        <View style={{ width: '100%', alignItems: 'center' }}>
+          <Text style={{ fontSize: 18, fontWeight: '600', marginBottom: 12, color: colors.textMain }}>
+            Badges Earned
+          </Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center' }}>
+            {badges.length > 0 ? (
+              badges.map((badge, index) => (
+                <View
+                  key={index}
+                  style={{
+                    backgroundColor: '#f0f0f0',
+                    paddingHorizontal: 14,
+                    paddingVertical: 8,
+                    borderRadius: 20,
+                    margin: 6,
+                  }}
+                >
+                  <Text style={{ fontSize: 16 }}>{badge}</Text>
+                </View>
+              ))
+            ) : (
+              <Text style={{ color: colors.textSecondary }}>No badges yet</Text>
+            )}
+          </View>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );

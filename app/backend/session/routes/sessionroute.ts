@@ -1,7 +1,7 @@
 import express, { Request, Response } from 'express';
 import prisma from '../../lib/prisma';
 import { z } from 'zod';
-import { checkAndUnlockAchievements } from '../../../utils/checkAndUnlockAchievements';
+
 
 
 
@@ -59,7 +59,7 @@ router.post('/', async (req: Request, res: Response) => {
     });
 
     // <-- Add this: check and unlock achievements
-    await checkAndUnlockAchievements(userId);
+
 
     return res.json({
       xpGained,
