@@ -17,6 +17,8 @@ export default function HomeScreen({ navigation }: any) {
   const { user } = useUser();
 
   const [quote, setQuote] = useState("");
+  const [loading, setLoading] = useState(true);
+
   const [longestStreakInfo, setLongestStreakInfo] = useState<{
     type: string;
     streak: number;
@@ -102,38 +104,31 @@ const doDailyCheckin = async () => {
 
 
   /** Reload data on focus */
-  const reloadHomeData = async () => {
-    if (!user?.id) {
-      console.warn("User not logged in");
-      return;
-    }
+ const reloadHomeData = async () => {
+  if (!user?.id) {
+    console.warn("User not logged in");
+    return;
+  }
 
-    // Set random quote
-    const qi = Math.floor(Math.random() * quotes.length);
-    setQuote(quotes[qi]);
+  setLoading(true); // 👈 start loading
 
-    try {
-      const res = await fetch(
-        `http://192.168.2.19:3000/api/craving?userId=${user.id}`
-      );
-      if (!res.ok) {
-        console.error("Failed to fetch cravings: HTTP error", res.status);
-        return;
-      }
+  const qi = Math.floor(Math.random() * quotes.length);
+  setQuote(quotes[qi]);
 
-      const data = await res.json();
+  try {
+    const res = await fetch(`http://192.168.2.19:3000/api/craving?userId=${user.id}`);
+    if (!res.ok) throw new Error("Failed to fetch cravings");
 
-      if (!Array.isArray(data)) {
-        console.error("Expected array but got:", data);
-        return;
-      }
+    const data = await res.json();
+    const longest = calculateLongestStreaksByType(data);
+    setLongestStreakInfo(longest);
+  } catch (err) {
+    console.error("Failed to fetch cravings", err);
+  } finally {
+    setLoading(false); // 👈 end loading
+  }
+};
 
-      const longest = calculateLongestStreaksByType(data);
-      setLongestStreakInfo(longest);
-    } catch (err) {
-      console.error("Failed to fetch cravings", err);
-    }
-  };
 
   // Run on every screen focus
   useFocusEffect(
@@ -149,6 +144,8 @@ const doDailyCheckin = async () => {
       className="flex-1 justify-center items-center px-6"
       style={{ backgroundColor: colors.background }}
     >
+
+
       {showXPReward && (
   <View
     className="absolute top-20 bg-[#FFD700] px-6 py-3 rounded-full shadow-lg"
@@ -202,32 +199,50 @@ const doDailyCheckin = async () => {
       </View>
 
       {/* Longest Streak */}
-      {longestStreakInfo.streak > 0 && (
-        <View
-          className="bg-[#E9EBF8] rounded-2xl p-6 mb-8 shadow-md w-full max-w-xl"
-          style={{
-            shadowColor: "#000",
-            shadowOpacity: 0.1,
-            shadowRadius: 8,
-            shadowOffset: { width: 0, height: 3 },
-            elevation: 5,
-          }}
-        >
-          <Text
-            className="text-lg text-center"
-            style={{ color: colors.textMain }}
-          >
-            🔥{" "}
-            <Text className="font-semibold" style={{ color: colors.primary }}>
-              {longestStreakInfo.streak}
-            </Text>{" "}
-            day{longestStreakInfo.streak === 1 ? "" : "s"} without{" "}
-            <Text className="font-semibold" style={{ color: colors.primary }}>
-              {longestStreakInfo.type}
-            </Text>
-          </Text>
-        </View>
-      )}
+        {loading ? (
+  <View
+    className="bg-[#E9EBF8] rounded-2xl p-6 mb-8 shadow-md w-full max-w-xl opacity-40"
+    style={{
+      shadowColor: "#000",
+      shadowOpacity: 0.1,
+      shadowRadius: 8,
+      shadowOffset: { width: 0, height: 3 },
+      elevation: 5,
+    }}
+  >
+    <Text
+      className="text-lg text-center"
+      style={{ color: colors.textMain }}
+    >
+      Calculating streak...
+    </Text>
+  </View>
+) : (
+  <View
+    className="bg-[#E9EBF8] rounded-2xl p-6 mb-8 shadow-md w-full max-w-xl"
+    style={{
+      shadowColor: "#000",
+      shadowOpacity: 0.1,
+      shadowRadius: 8,
+      shadowOffset: { width: 0, height: 3 },
+      elevation: 5,
+    }}
+  >
+    <Text
+      className="text-lg text-center"
+      style={{ color: colors.textMain }}
+    >
+      🔥{" "}
+      <Text className="font-semibold" style={{ color: colors.primary }}>
+        {longestStreakInfo.streak}
+      </Text>{" "}
+      day{longestStreakInfo.streak === 1 ? "" : "s"} without{" "}
+      <Text className="font-semibold" style={{ color: colors.primary }}>
+        {longestStreakInfo.type || "craving"}
+      </Text>
+    </Text>
+  </View>
+)}
 
       {/* Button */}
       <TouchableOpacity
