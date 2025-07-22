@@ -5,6 +5,7 @@ import * as SecureStore from 'expo-secure-store';
 import { NavigationContainer } from '@react-navigation/native';
 import Navigation from './navigation/Navigation'; // will point to RootNavigator
 import AuthStack from './navigation/AuthStack'; // your auth stack for sign-in/up
+import { VoiceProvider } from './context/VoiceContext'; // Context for voice settings
 import '../global.css';
 
 const tokenCache = {
@@ -26,7 +27,10 @@ export default function App() {
       <GestureHandlerRootView style={{ flex: 1 }}>
         <NavigationContainer>
           <SignedIn>
-            <Navigation /> {/* RootNavigator */}
+            <VoiceProvider>
+                  <Navigation /> {/* RootNavigator */}
+            </VoiceProvider>
+            
           </SignedIn>
           <SignedOut>
             <AuthStack /> {/* Your auth stack */}

@@ -11,6 +11,7 @@ import * as Speech from "expo-speech";
 import { useFocusEffect } from "@react-navigation/native";
 import colors from "../utils/colors";
 import TappingDotsGame from "./TappingDotsGame";
+import { useVoice } from "../context/VoiceContext"; // Custom context for voice settings
 
 const SESSION_DURATION = 60;
 const BREATH_DURATION = 16000;
@@ -27,9 +28,11 @@ const BOX_SIZE = 240;
 const BALL_SIZE = 48;
 const { width, height } = Dimensions.get("window");
 export default function CalmingSessionScreen({ navigation }: any) {
+  
   const [totalDuration, setTotalDuration] = useState(SESSION_DURATION);
   const [secondsLeft, setSecondsLeft] = useState(SESSION_DURATION);
   const [phase, setPhase] = useState<"Inhale" | "Exhale" | "Hold">("Inhale");
+  const { selectedVoice } = useVoice();
 
   const [paused, setPaused] = useState(false);
   const [voiceEnabled, setVoiceEnabled] = useState(true);
@@ -83,7 +86,10 @@ export default function CalmingSessionScreen({ navigation }: any) {
   const startBreathingCircle = useCallback(() => {
     setPhase("Inhale");
     Speech.stop();
-    if (voiceRef.current) Speech.speak("Inhale", { rate: 0.9 });
+    if (voiceRef.current) Speech.speak("Inhale", {
+  rate: 0.9,
+  voice: selectedVoice?.identifier,
+});
 
     scale.value = withTiming(1.5, { duration: BREATH_DURATION / 2 });
 
@@ -92,7 +98,10 @@ export default function CalmingSessionScreen({ navigation }: any) {
       setPhase((prev) => {
         const next = prev === "Inhale" ? "Exhale" : "Inhale";
         Speech.stop();
-        if (voiceRef.current) Speech.speak(next, { rate: 0.9 });
+        if (voiceRef.current) Speech.speak(next, {
+  rate: 0.9,
+  voice: selectedVoice?.identifier,
+});
 
         scale.value = withTiming(next === "Inhale" ? 1.5 : 0.9, {
           duration: BREATH_DURATION / 2,
@@ -147,7 +156,10 @@ export default function CalmingSessionScreen({ navigation }: any) {
 
     setPhase(steps[step]);
     Speech.stop();
-    if (voiceRef.current) Speech.speak(steps[step], { rate: 0.9 });
+    if (voiceRef.current) Speech.speak(steps[step], {
+  rate: 0.9,
+  voice: selectedVoice?.identifier,
+});
 
     startBoxLoop();
 
@@ -157,7 +169,10 @@ export default function CalmingSessionScreen({ navigation }: any) {
       step = (step + 1) % steps.length;
       setPhase(steps[step]);
       Speech.stop();
-      if (voiceRef.current) Speech.speak(steps[step], { rate: 0.9 });
+      if (voiceRef.current) Speech.speak(steps[step], {
+  rate: 0.9,
+  voice: selectedVoice?.identifier,
+});
     }, BREATH_DURATION / 4);
   }, [moveAnim]);
 

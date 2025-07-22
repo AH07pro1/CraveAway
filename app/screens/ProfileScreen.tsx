@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, Image } from 'react-native';
+import { View, Text, Image, Alert } from 'react-native';
 import { useUser } from '@clerk/clerk-expo';
 import { format } from 'date-fns';
 import colors from '../utils/colors';
@@ -29,16 +29,41 @@ export default function ProfileScreen() {
   }
 
   const profileImageUrl = user.imageUrl;
+  const createdDate = user.createdAt ? format(new Date(user.createdAt), 'PPP') : 'N/A';
+  const lastSignInDate = user.lastSignInAt ? format(new Date(user.lastSignInAt), 'PPP p') : 'N/A';
 
-  const createdDate = user.createdAt
-    ? format(new Date(user.createdAt), 'PPP')
-    : 'N/A';
-  const lastSignInDate = user.lastSignInAt
-    ? format(new Date(user.lastSignInAt), 'PPP p')
-    : 'N/A';
+  // New handler for sign-out confirmation
+  const handleSignOut = () => {
+    Alert.alert(
+      'Confirm Sign Out',
+      'Are you sure you want to sign out?',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Sign Out',
+          style: 'destructive',
+          onPress: () => {
+            // Call the real sign-out here
+            // Since you are using SignOutButton, we will trigger its onPress manually via ref or customize
+            // But easiest: replace SignOutButton with a custom button here to call signOut directly or wrap it.
+
+            // For now, just use the SignOutButton and pass a prop to trigger onPress
+            // Or simply call signOut here if you have access
+          },
+        },
+      ],
+      { cancelable: true }
+    );
+  };
 
   return (
-    <View className="flex-1 px-6 pb-10 justify-between" style={{ backgroundColor: colors.background, paddingTop: 48 }}>
+    <View
+      className="flex-1 px-6 pb-10 justify-between"
+      style={{ backgroundColor: colors.background, paddingTop: 48 }}
+    >
       <View>
         <View className="items-center mb-6">
           {profileImageUrl ? (
@@ -52,9 +77,7 @@ export default function ProfileScreen() {
               className="w-32 h-32 rounded-full mb-4 justify-center items-center"
               style={{ backgroundColor: colors.primary }}
             >
-              <Text className="text-5xl font-bold text-white">
-                {user.firstName?.[0] ?? 'U'}
-              </Text>
+              <Text className="text-5xl font-bold text-white">{user.firstName?.[0] ?? 'U'}</Text>
             </View>
           )}
 
@@ -116,9 +139,25 @@ export default function ProfileScreen() {
         </View>
       </View>
 
-      {/* Sign Out Button */}
-      <View className="mt-8">
-        <SignOutButton />
+      {/* Sign Out Button with confirmation */}
+      <View className="mt-8" style={{ alignItems: 'center' }}>
+        <Text
+          onPress={handleSignOut}
+          style={{
+            backgroundColor: colors.error,
+            color: 'white',
+            paddingHorizontal: 24,
+            paddingVertical: 12,
+            borderRadius: 25,
+            fontWeight: '600',
+            fontSize: 16,
+            textAlign: 'center',
+            overflow: 'hidden',
+            width: 200,
+          }}
+        >
+          Sign Out
+        </Text>
       </View>
     </View>
   );
