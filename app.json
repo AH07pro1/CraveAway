@@ -1,9 +1,9 @@
 {
   "expo": {
+    "version": "1.0.1",
     "name": "CraveAway",
     "slug": "CraveAway",
     "scheme": "craveaway",
-    "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -17,18 +17,34 @@
       "supportsTablet": true
     },
     "android": {
+      "versionCode": 4,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "package": "com.ah07.CraveAway"
     },
     "web": {
       "bundler": "metro",
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-      "expo-secure-store"
-    ]
+  "expo-secure-store",
+  [
+    "expo-build-properties",
+    {
+      "android": {
+        "permissions": ["com.android.vending.BILLING"]
+      }
+    }
+  ]
+
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "e24b80ab-e5c8-438b-8762-67bc0b9fb6da"
+      }
+    }
   }
 }

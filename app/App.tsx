@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { ClerkProvider, SignedIn, SignedOut } from '@clerk/clerk-expo';
 import * as SecureStore from 'expo-secure-store';
@@ -6,7 +6,23 @@ import { NavigationContainer } from '@react-navigation/native';
 import Navigation from './navigation/Navigation'; // will point to RootNavigator
 import AuthStack from './navigation/AuthStack'; // your auth stack for sign-in/up
 import { VoiceProvider } from './context/VoiceContext'; // Context for voice settings
+import { Platform } from 'react-native';
+
 import '../global.css';
+
+import Purchases from 'react-native-purchases';
+
+const REVENUECAT_API_KEY = Platform.select({
+  // ios: 'your_ios_revenuecat_key',
+  android: 'goog_lTWAjIdmkcFLTnkNzVyEhdLiVZL',
+});
+
+useEffect(() => {
+  Purchases.configure({ apiKey: REVENUECAT_API_KEY! });
+
+}, []);
+
+
 
 const tokenCache = {
   async getToken(key: string) {

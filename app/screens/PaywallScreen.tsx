@@ -2,13 +2,33 @@ import React from 'react';
 import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import colors from '../utils/colors';
-
+import Purchases from 'react-native-purchases';
 export default function PaywallScreen({ navigation }: any) {
   async function completePayment() {
-    // 🧠 Replace this with real payment logic (e.g., RevenueCat or in-app purchase)
-    await AsyncStorage.setItem('hasPaid', 'true');
-    navigation.replace('Tabs');
+  try {
+    const offerings = await Purchases.getOfferings();
+    const currentOffering = offerings.current;
+
+    if (currentOffering && currentOffering.availablePackages.length > 0) {
+      const { customerInfo } = await Purchases.purchasePackage(currentOffering.availablePackages[0]);
+
+      const isPro = typeof customerInfo.entitlements.active['pro'] !== 'undefined';
+      if (isPro) {
+        await AsyncStorage.setItem('hasPaid', 'true');
+        navigation.replace('Tabs');
+      } else {
+        alert("Purchase didn't unlock the entitlement.");
+      }
+    } else {
+      alert('No available subscription packages found.');
+    }
+  } catch (error: any) {
+    if (!error.userCancelled) {
+      alert('Something went wrong during purchase.');
+      console.warn('Purchase error', error);
+    }
   }
+}
 
   return (
     <ScrollView contentContainerStyle={{ flexGrow: 1 }}>

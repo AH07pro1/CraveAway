@@ -1,9 +1,11 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { View, Text, TouchableOpacity } from "react-native";
 import { format, parseISO } from "date-fns";
 import { useFocusEffect } from "@react-navigation/native";
 import colors from "../utils/colors";
 import { useUser } from "@clerk/clerk-expo";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import Purchases from "react-native-purchases";
 
 const quotes = [
   "Every craving you resist is a victory.",
@@ -25,6 +27,20 @@ export default function HomeScreen({ navigation }: any) {
   }>({ type: "", streak: 0 });
   const [xpGained, setXpGained] = useState<number | null>(null);
 const [showXPReward, setShowXPReward] = useState(false);
+
+useEffect(() => {
+  const checkSubscription = async () => {
+    const customerInfo = await Purchases.getCustomerInfo();
+    const isPro = typeof customerInfo.entitlements.active['pro'] !== 'undefined';
+
+    if (isPro) {
+      await AsyncStorage.setItem('hasPaid', 'true');
+      navigation.replace('Tabs'); // Now it works because you're in a screen
+    }
+  };
+
+  checkSubscription();
+}, []);
 
 
   /** Helpers */
