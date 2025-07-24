@@ -17,10 +17,6 @@ const REVENUECAT_API_KEY = Platform.select({
   android: 'goog_lTWAjIdmkcFLTnkNzVyEhdLiVZL',
 });
 
-useEffect(() => {
-  Purchases.configure({ apiKey: REVENUECAT_API_KEY! });
-
-}, []);
 
 
 
@@ -34,6 +30,11 @@ const tokenCache = {
 };
 
 export default function App() {
+  useEffect(() => {
+  Purchases.configure({ apiKey: REVENUECAT_API_KEY! });
+
+}, []);
+
   return (
     <ClerkProvider
       publishableKey="pk_test_bGl2ZS13aGFsZS0xMy5jbGVyay5hY2NvdW50cy5kZXYk"

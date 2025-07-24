@@ -48,7 +48,7 @@ export default function PaywallScreen({ navigation }: any) {
         </View>
 
         <View className="items-center mb-8">
-          <Text className="text-xl font-bold mb-2" style={{ color: colors.primary }}>$4.99 one-time</Text>
+          <Text className="text-xl font-bold mb-2" style={{ color: colors.primary }}>$4.99/month</Text>
           <Text className="text-sm text-gray-500">No subscriptions. Pay once, heal forever.</Text>
         </View>
 
@@ -61,12 +61,12 @@ export default function PaywallScreen({ navigation }: any) {
           <Text className="text-white font-bold text-lg">Subscribe Now</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity
+        {/* <TouchableOpacity
           onPress={() => navigation.replace('Tabs')}
           activeOpacity={0.6}
         >
           <Text className="text-sm underline text-gray-500">Continue without subscribing</Text>
-        </TouchableOpacity>
+        </TouchableOpacity> */}
       </View>
     </ScrollView>
   );
