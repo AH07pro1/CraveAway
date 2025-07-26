@@ -14,6 +14,7 @@ import colors from "../utils/colors";
 import Slider from "@react-native-community/slider";
 import { Picker } from "@react-native-picker/picker";
 import { useUser } from "@clerk/clerk-expo";
+import { API_URL } from "../config"; // Import API_URL
 
 const formatCravingDate = (dateString: string): string => {
   const date = new Date(dateString);
@@ -109,7 +110,7 @@ export default function CravingListScreen({ navigation }: any) {
 
   try {
     setLoading(true);
-    const res = await fetch(`http://192.168.2.19:3000/api/craving?userId=${user.id}`);
+    const res = await fetch(`${API_URL}/api/craving?userId=${user.id}`);
     const data = await res.json();
     setCravings(data);
   } catch (error) {

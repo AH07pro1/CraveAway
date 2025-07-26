@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { API_URL } from "../config";
 import {
   View,
   Text,
@@ -122,7 +123,7 @@ export default function SettingsScreen() {
 
     setAdding(true);
     try {
-      const res = await fetch("http://192.168.2.19:3000/api/craving-types", {
+      const res = await fetch("${API_URL}/api/craving-types", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: trimmed, userId: user!.id }),
@@ -168,7 +169,7 @@ export default function SettingsScreen() {
   async function fetchCravingTypes() {
     setLoading(true);
     try {
-      const res = await fetch(`http://192.168.2.19:3000/api/craving-types?userId=${user?.id}`);
+      const res = await fetch(`${API_URL}/api/craving-types?userId=${user?.id}`);
       if (!res.ok) {
         throw new Error("Failed to fetch craving types");
       }

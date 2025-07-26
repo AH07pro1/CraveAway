@@ -10,6 +10,7 @@ import {
 import { useUser } from '@clerk/clerk-expo';
 import { useFocusEffect } from '@react-navigation/native';
 import colors from '../utils/colors';
+import { API_URL } from '../config';
 
 export default function ProgressScreen() {
   const { user } = useUser();
@@ -50,7 +51,7 @@ export default function ProgressScreen() {
 
     setLoading(true);
     try {
-      const res = await fetch(`http://192.168.2.19:3000/api/session-complete/${user.id}`);
+      const res = await fetch(`${API_URL}/api/session-complete/${user.id}`);
       const data = await res.json();
       console.log('API response:', data); // Debug: check API response
 

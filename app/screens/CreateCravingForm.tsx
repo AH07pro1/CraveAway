@@ -14,6 +14,7 @@ import Slider from "@react-native-community/slider";
 import { Picker } from "@react-native-picker/picker";
 import colors from "../utils/colors";
 import { useUser } from "@clerk/clerk-expo";
+import { API_URL } from "../config"; // Import API_URL
 
 type CravingType = { name: string; isCustom: boolean };
 
@@ -250,7 +251,7 @@ export default function CreateCravingForm({ navigation }: any) {
     const fetchCravingTypes = async () => {
       try {
         const res = await fetch(
-          `http://192.168.2.19:3000/api/craving-types?userId=${user.id}`
+          `${API_URL}/api/craving-types?userId=${user.id}`
         );
         const data: CravingType[] = await res.json();
         setCravingTypes(data);
@@ -273,7 +274,7 @@ export default function CreateCravingForm({ navigation }: any) {
     setIsSubmitting(true);
 
     try {
-      const response = await fetch("http://192.168.2.19:3000/api/craving", {
+      const response = await fetch("${API_URL}/api/craving", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

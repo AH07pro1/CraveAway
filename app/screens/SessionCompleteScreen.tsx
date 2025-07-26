@@ -2,12 +2,14 @@ import React, { useEffect, useState } from "react";
 import { View, Text, Pressable } from "react-native";
 import colors from "../utils/colors";
 import { useUser } from '@clerk/clerk-expo';
+import { API_URL } from "../config";
 export default function SessionCompleteScreen({ route, navigation }: any) {
   const { user } = useUser(); // Clerk user
   const { timeSpent = 0 } = route.params || {};
   const seconds = Number(timeSpent) || 0;
 const [showXPReward, setShowXPReward] = useState(false);
 const [xpGained, setXpGained] = useState<number | null>(null);
+
 
 
   // Display format: if >= 60s, show minutes & seconds, else show seconds
@@ -24,7 +26,7 @@ const [xpGained, setXpGained] = useState<number | null>(null);
    useEffect(() => {
     const sendXP = async () => {
   try {
-    const response = await fetch("http://192.168.2.19:3000/api/session-complete", {
+    const response = await fetch("${API_URL}/api/session-complete", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

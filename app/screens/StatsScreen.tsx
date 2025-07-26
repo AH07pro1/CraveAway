@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { API_URL } from "../config";
 import {
   View,
   Text,
@@ -86,7 +87,7 @@ export default function StatsScreen({ navigation }: any) {
       setLoading(true);
 
       try {
-        const res = await fetch(`http://192.168.2.19:3000/api/craving?userId=${user.id}`);
+        const res = await fetch(`${API_URL}/api/craving?userId=${user.id}`);
         const data = await res.json();
         setCravings(data);
 

@@ -6,6 +6,7 @@ import colors from "../utils/colors";
 import { useUser } from "@clerk/clerk-expo";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Purchases from "react-native-purchases";
+import { API_URL } from "../config"; // Import API_URL
 
 const quotes = [
   "Every craving you resist is a victory.",
@@ -94,7 +95,7 @@ const doDailyCheckin = async () => {
   if (!user?.id) return;
 
   try {
-    const response = await fetch('http://192.168.2.19:3000/api/daily-checkin', {
+    const response = await fetch('${API_URL}/api/daily-checkin', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ userId: user.id }),
@@ -132,7 +133,7 @@ const doDailyCheckin = async () => {
   setQuote(quotes[qi]);
 
   try {
-    const res = await fetch(`http://192.168.2.19:3000/api/craving?userId=${user.id}`);
+    const res = await fetch(`${API_URL}/api/craving?userId=${user.id}`);
     if (!res.ok) throw new Error("Failed to fetch cravings");
 
     const data = await res.json();

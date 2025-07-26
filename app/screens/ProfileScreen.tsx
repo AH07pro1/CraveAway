@@ -5,6 +5,7 @@ import { format } from 'date-fns';
 import colors from '../utils/colors';
 import { SignOutButton } from './auth/components/SignOutButton';
 
+
 export default function ProfileScreen() {
   const { user, isLoaded } = useUser();
 

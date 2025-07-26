@@ -9,6 +9,7 @@ import {
   Pressable,
 } from "react-native";
 import colors from "../utils/colors"; // adjust path as needed
+import { API_URL } from "../config";
 
 type CravingType = {
   id: number;
@@ -33,7 +34,7 @@ export default function CravingDetailScreen({ route, navigation }: any) {
   const fetchCraving = async () => {
     try {
       setLoading(true);
-      const res = await fetch(`http://192.168.2.19:3000/api/craving/${id}`);
+      const res = await fetch(`${API_URL}/api/craving/${id}`);
       if (!res.ok) {
         const err = await res.json();
         Alert.alert("Error", err.error || "Failed to load craving details");
