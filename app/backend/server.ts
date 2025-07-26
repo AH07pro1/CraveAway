@@ -19,6 +19,8 @@ app.use('/api/session-complete', sessionRoute);
 app.use('/api/daily-checkin', dailyCheckinRoute);
 
 // Server start
-app.listen(PORT, () => {
-  console.log(`✅ Backend running at http://localhost:${PORT}`);
+app.listen(3000, '0.0.0.0', () => {
+  console.log(`✅ Backend running at http://0.0.0.0:3000`);
+
 });
+
