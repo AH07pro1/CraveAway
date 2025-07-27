@@ -12,7 +12,8 @@ export default function PaywallScreen({ navigation }: any) {
     if (currentOffering && currentOffering.availablePackages.length > 0) {
       const { customerInfo } = await Purchases.purchasePackage(currentOffering.availablePackages[0]);
 
-      const isPro = typeof customerInfo.entitlements.active['pro'] !== 'undefined';
+      const isPro = typeof customerInfo.entitlements.active['Monthly Membership'] !== 'undefined';
+
       if (isPro) {
         await AsyncStorage.setItem('hasPaid', 'true');
         navigation.replace('Tabs');
@@ -61,12 +62,12 @@ export default function PaywallScreen({ navigation }: any) {
           <Text className="text-white font-bold text-lg">Subscribe Now</Text>
         </TouchableOpacity>
 
-        {/* <TouchableOpacity
+        <TouchableOpacity
           onPress={() => navigation.replace('Tabs')}
           activeOpacity={0.6}
         >
           <Text className="text-sm underline text-gray-500">Continue without subscribing</Text>
-        </TouchableOpacity> */}
+        </TouchableOpacity>
       </View>
     </ScrollView>
   );
