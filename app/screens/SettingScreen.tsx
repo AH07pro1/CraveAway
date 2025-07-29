@@ -165,28 +165,26 @@ export default function SettingsScreen() {
     });
   };
 
-  useEffect(() => {
-  async function fetchCravingTypes() {
+useEffect(() => {
+  if (!user?.id) return;
+
+  const fetchCravingTypes = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${API_URL}/api/craving-types?userId=${user?.id}`);
-      if (!res.ok) {
-        throw new Error("Failed to fetch craving types");
-      }
-      const data = await res.json();
-      setCravingTypes(data);
+      const res = await fetch(`${API_URL}/api/craving-types?userId=${user.id}`);
+      if (!res.ok) throw new Error("Failed to fetch craving types");
+      setCravingTypes(await res.json());
     } catch (e) {
       Alert.alert("Error", "Could not load craving types.");
       console.warn("Fetch craving types error:", e);
     } finally {
       setLoading(false);
     }
-  }
+  };
 
-  if (user?.id) {
-    fetchCravingTypes();
-  }
+  fetchCravingTypes();
 }, [user?.id]);
+
 
   return (
     <SafeAreaView

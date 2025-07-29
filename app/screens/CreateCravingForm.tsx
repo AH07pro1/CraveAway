@@ -274,7 +274,8 @@ export default function CreateCravingForm({ navigation }: any) {
     setIsSubmitting(true);
 
     try {
-      const response = await fetch("${API_URL}/api/craving", {
+      const response = await fetch(`${API_URL}/api/craving`, {
+
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
