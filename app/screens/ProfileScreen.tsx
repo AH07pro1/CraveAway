@@ -1,13 +1,14 @@
 import React from 'react';
-import { View, Text, Image, Alert } from 'react-native';
-import { useUser } from '@clerk/clerk-expo';
+import { View, Text, Image, Alert, TouchableOpacity } from 'react-native';
+import { useUser, useClerk } from '@clerk/clerk-expo';
 import { format } from 'date-fns';
 import colors from '../utils/colors';
-import { SignOutButton } from './auth/components/SignOutButton';
-
+import { useNavigation } from '@react-navigation/native';
 
 export default function ProfileScreen() {
   const { user, isLoaded } = useUser();
+  const { signOut } = useClerk();
+  const navigation = useNavigation<any>();
 
   if (!isLoaded) {
     return (
@@ -33,26 +34,47 @@ export default function ProfileScreen() {
   const createdDate = user.createdAt ? format(new Date(user.createdAt), 'PPP') : 'N/A';
   const lastSignInDate = user.lastSignInAt ? format(new Date(user.lastSignInAt), 'PPP p') : 'N/A';
 
-  // New handler for sign-out confirmation
   const handleSignOut = () => {
     Alert.alert(
       'Confirm Sign Out',
       'Are you sure you want to sign out?',
       [
-        {
-          text: 'Cancel',
-          style: 'cancel',
-        },
+        { text: 'Cancel', style: 'cancel' },
         {
           text: 'Sign Out',
           style: 'destructive',
-          onPress: () => {
-            // Call the real sign-out here
-            // Since you are using SignOutButton, we will trigger its onPress manually via ref or customize
-            // But easiest: replace SignOutButton with a custom button here to call signOut directly or wrap it.
+          onPress: async () => {
+            try {
+              await signOut();
+              navigation.replace('SignIn'); // Adjust if needed
+            } catch (err) {
+              console.error("Error signing out", err);
+            }
+          },
+        },
+      ],
+      { cancelable: true }
+    );
+  };
 
-            // For now, just use the SignOutButton and pass a prop to trigger onPress
-            // Or simply call signOut here if you have access
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      'Delete Account',
+      `Are you sure you want to delete your account, ${user.fullName || user.firstName || 'User'}? This action cannot be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await user.delete();
+              // After deletion, navigate to sign-in or landing page
+              navigation.replace('SignIn');
+            } catch (error) {
+              console.error('Failed to delete account:', error);
+              Alert.alert('Error', 'Failed to delete account. Please try again later.');
+            }
           },
         },
       ],
@@ -140,25 +162,69 @@ export default function ProfileScreen() {
         </View>
       </View>
 
-      {/* Sign Out Button with confirmation */}
-      <View className="mt-8" style={{ alignItems: 'center' }}>
-        <Text
-          onPress={handleSignOut}
-          style={{
-            backgroundColor: colors.error,
-            color: 'white',
-            paddingHorizontal: 24,
-            paddingVertical: 12,
-            borderRadius: 25,
-            fontWeight: '600',
-            fontSize: 16,
-            textAlign: 'center',
-            overflow: 'hidden',
-            width: 200,
-          }}
-        >
-          Sign Out
-        </Text>
+      {/* Buttons container */}
+      <View
+        className="mt-8 flex-row justify-center space-x-4"
+        style={{ paddingHorizontal: 16 }}
+      >
+        <TouchableOpacity
+  onPress={handleSignOut}
+  style={{
+    backgroundColor: colors.error,
+    paddingHorizontal: 24,
+    paddingVertical: 8,   // less vertical padding
+    borderRadius: 20,     // slightly smaller radius
+    width: 140,
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 1.41,
+    elevation: 2,
+  }}
+>
+  <Text
+    style={{
+      color: 'white',
+      fontWeight: '600',
+      fontSize: 14,   // slightly smaller font size
+      textAlign: 'center',
+      overflow: 'hidden',
+    }}
+  >
+    Sign Out
+  </Text>
+</TouchableOpacity>
+
+<TouchableOpacity
+  onPress={handleDeleteAccount}
+  style={{
+    backgroundColor: '#b91c1c',
+    paddingHorizontal: 24,
+    paddingVertical: 8,   // less vertical padding
+    borderRadius: 20,
+    width: 140,
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 1.41,
+    elevation: 2,
+  }}
+>
+  <Text
+    style={{
+      color: 'white',
+      fontWeight: '600',
+      fontSize: 14,
+      textAlign: 'center',
+      overflow: 'hidden',
+    }}
+  >
+    Delete Account
+  </Text>
+</TouchableOpacity>
+
       </View>
     </View>
   );

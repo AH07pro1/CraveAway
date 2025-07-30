@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { ClerkProvider, SignedIn, SignedOut } from '@clerk/clerk-expo';
 import * as SecureStore from 'expo-secure-store';
@@ -7,10 +7,11 @@ import Navigation from './navigation/Navigation'; // will point to RootNavigator
 import AuthStack from './navigation/AuthStack'; // your auth stack for sign-in/up
 import { VoiceProvider } from './context/VoiceContext'; // Context for voice settings
 import { Platform } from 'react-native';
-
+import OnboardingOrPaywallNavigator from './navigation/OnboardingOrPaywallNavigator';
 import '../global.css';
 
 import Purchases from 'react-native-purchases';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const REVENUECAT_API_KEY = Platform.select({
   // ios: 'your_ios_revenuecat_key',
@@ -30,10 +31,27 @@ const tokenCache = {
 };
 
 export default function App() {
-  useEffect(() => {
-  Purchases.configure({ apiKey: REVENUECAT_API_KEY! });
+  const [isLoading, setIsLoading] = useState(true);
+  const [hasPaid, setHasPaid] = useState(false);
 
-}, []);
+  useEffect(() => {
+    async function checkPayment() {
+      try {
+        const paidFlag = await AsyncStorage.getItem('hasPaid');
+        setHasPaid(paidFlag === 'true');
+      } catch (e) {
+        console.warn('Failed to read payment status:', e);
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    checkPayment();
+  }, []);
+
+  if (isLoading) {
+    // Show splash/loading screen or null while checking
+    return null;
+  }
 
   return (
     <ClerkProvider
@@ -45,12 +63,16 @@ export default function App() {
         <NavigationContainer>
           <SignedIn>
             <VoiceProvider>
-                  <Navigation /> {/* RootNavigator */}
+              {/* 
+                Decide initial screen based on payment status:
+                - If paid, go to main app
+                - If not, go to onboarding/paywall flow 
+              */}
+              {hasPaid ? <Navigation /> : <OnboardingOrPaywallNavigator />}
             </VoiceProvider>
-            
           </SignedIn>
           <SignedOut>
-            <AuthStack /> {/* Your auth stack */}
+            <AuthStack />
           </SignedOut>
         </NavigationContainer>
       </GestureHandlerRootView>

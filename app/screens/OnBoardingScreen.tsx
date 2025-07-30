@@ -8,6 +8,7 @@ import {
   Platform,
 } from 'react-native';
 import colors from '../utils/colors';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const steps = [
   {
@@ -84,15 +85,19 @@ export default function OnboardingScreen({ navigation }: any) {
     }
   };
 
-  const handleNext = () => {
-    if (stepIndex < steps.length - 1) {
-      setStepIndex(stepIndex + 1);
-    } else {
-      // Could store onboarding answers in AsyncStorage here
-      navigation.replace('Paywall');
+  const handleNext = async () => {
+  if (stepIndex < steps.length - 1) {
+    setStepIndex(stepIndex + 1);
+  } else {
+    // Save onboarding completion flag
+    try {
+      await AsyncStorage.setItem('hasOnboarded', 'true');
+    } catch (error) {
+      console.warn('Failed to save onboarding flag', error);
     }
-  };
-
+    navigation.replace('Paywall');
+  }
+};
   return (
     <KeyboardAvoidingView
       className="flex-1 justify-center items-center px-6 bg-white"
@@ -127,7 +132,7 @@ export default function OnboardingScreen({ navigation }: any) {
 
         {currentStep.type === 'question' && (
           <View className="w-full">
-            {currentStep.options.map((option, index) => (
+            {currentStep.options?.map((option, index) => (
               <TouchableOpacity
                 key={index}
                 onPress={() => handleOptionSelect(option)}
@@ -137,7 +142,7 @@ export default function OnboardingScreen({ navigation }: any) {
                   backgroundColor: 'white',
                 }}
               >
-                <Text className="text-base text-center" style={{ color: colors.textPrimary }}>
+                <Text className="text-base text-center" style={{ color: colors.textMain }}>
                   {option}
                 </Text>
               </TouchableOpacity>
@@ -153,7 +158,7 @@ export default function OnboardingScreen({ navigation }: any) {
               onChangeText={setInputValue}
               className="border border-gray-300 rounded-xl px-4 py-3 mb-4 text-base"
               placeholderTextColor="#999"
-              style={{ color: colors.textPrimary, borderColor: colors.border }}
+              style={{ color: colors.textMain, borderColor: colors.border }}
             />
             <TouchableOpacity
               onPress={handleInputSubmit}

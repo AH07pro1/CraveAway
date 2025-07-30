@@ -123,11 +123,12 @@ export default function SettingsScreen() {
 
     setAdding(true);
     try {
-      const res = await fetch("${API_URL}/api/craving-types", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: trimmed, userId: user!.id }),
-      });
+      const res = await fetch(`${API_URL}/api/craving-types`, {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ name: trimmed, userId: user!.id }),
+});
+
 
       if (!res.ok) {
         const err = await res.json();
@@ -172,8 +173,13 @@ useEffect(() => {
     setLoading(true);
     try {
       const res = await fetch(`${API_URL}/api/craving-types?userId=${user.id}`);
-      if (!res.ok) throw new Error("Failed to fetch craving types");
-      setCravingTypes(await res.json());
+if (!res.ok) throw new Error("Failed to fetch craving types");
+const data = await res.json();
+console.log("Craving types fetched from backend:", data);
+setCravingTypes(data);
+
+
+
     } catch (e) {
       Alert.alert("Error", "Could not load craving types.");
       console.warn("Fetch craving types error:", e);

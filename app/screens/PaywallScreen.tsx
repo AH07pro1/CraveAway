@@ -3,33 +3,40 @@ import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import colors from '../utils/colors';
 import Purchases from 'react-native-purchases';
+
 export default function PaywallScreen({ navigation }: any) {
   async function completePayment() {
-  try {
-    const offerings = await Purchases.getOfferings();
-    const currentOffering = offerings.current;
+    try {
+      const offerings = await Purchases.getOfferings();
+      const currentOffering = offerings.current;
 
-    if (currentOffering && currentOffering.availablePackages.length > 0) {
-      const { customerInfo } = await Purchases.purchasePackage(currentOffering.availablePackages[0]);
+      if (currentOffering && currentOffering.availablePackages.length > 0) {
+        const { customerInfo } = await Purchases.purchasePackage(currentOffering.availablePackages[0]);
 
-      const isPro = typeof customerInfo.entitlements.active['Monthly Membership'] !== 'undefined';
+        const isPro = typeof customerInfo.entitlements.active['Monthly Membership'] !== 'undefined';
 
-      if (isPro) {
-        await AsyncStorage.setItem('hasPaid', 'true');
-        navigation.replace('Tabs');
+        if (isPro) {
+          await AsyncStorage.setItem('hasPaid', 'true');
+          navigation.replace('Tabs');
+        } else {
+          alert("Purchase didn't unlock the entitlement.");
+        }
       } else {
-        alert("Purchase didn't unlock the entitlement.");
+        alert('No available subscription packages found.');
       }
-    } else {
-      alert('No available subscription packages found.');
-    }
-  } catch (error: any) {
-    if (!error.userCancelled) {
-      alert('Something went wrong during purchase.');
-      console.warn('Purchase error', error);
+    } catch (error: any) {
+      if (!error.userCancelled) {
+        alert('Something went wrong during purchase.');
+        console.warn('Purchase error', error);
+      }
     }
   }
-}
+
+  // Handle continue without subscribing (testing)
+  async function continueWithoutSubscribe() {
+    await AsyncStorage.setItem('hasPaid', 'true'); // Mark as paid for testing
+    navigation.replace('Tabs');
+  }
 
   return (
     <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
@@ -63,7 +70,7 @@ export default function PaywallScreen({ navigation }: any) {
         </TouchableOpacity>
 
         <TouchableOpacity
-          onPress={() => navigation.replace('Tabs')}
+          onPress={continueWithoutSubscribe}
           activeOpacity={0.6}
         >
           <Text className="text-sm underline text-gray-500">Continue without subscribing</Text>

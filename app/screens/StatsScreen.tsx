@@ -88,8 +88,10 @@ export default function StatsScreen({ navigation }: any) {
 
       try {
         const res = await fetch(`${API_URL}/api/craving?userId=${user.id}`);
-        const data = await res.json();
-        setCravings(data);
+const data = await res.json();
+console.log("✅ Response:", data);
+setCravings(data);
+
 
         const stats: any = {};
         let totalIntensity = 0;

@@ -7,6 +7,7 @@ export const SignOutButton = () => {
   const navigation = useNavigation<any>();
 
   const handleSignOut = async () => {
+    console.log("Signing out...");
     try {
       await signOut();
       navigation.replace('SignIn');

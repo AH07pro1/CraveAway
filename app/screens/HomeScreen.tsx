@@ -95,7 +95,8 @@ const doDailyCheckin = async () => {
   if (!user?.id) return;
 
   try {
-    const response = await fetch('${API_URL}/api/daily-checkin', {
+    const response = await fetch(`${API_URL}/api/daily-checkin`, {
+
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ userId: user.id }),

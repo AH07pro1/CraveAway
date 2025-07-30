@@ -10,24 +10,24 @@ const cravingTypeSchema = z.object({
   userId: z.string(),   
 });
 
-// Middleware to mock user authentication (replace with real auth)
-function mockAuthMiddleware(req: Request, res: Response, next: any) {
-  // This is just a demo. In real apps, decode token etc.
-  req.user = { id: 'some-user-id' }; 
-  next();
-}
+// // Middleware to mock user authentication (replace with real auth)
+// function mockAuthMiddleware(req: Request, res: Response, next: any) {
+//   // This is just a demo. In real apps, decode token etc.
+//   req.user = { id: 'some-user-id' }; 
+//   next();
+// }
 
-// Extend Express Request interface for `user`
-declare global {
-  namespace Express {
-    interface Request {
-      user?: { id: string };
-    }
-  }
-}
+// // Extend Express Request interface for `user`
+// declare global {
+//   namespace Express {
+//     interface Request {
+//       user?: { id: string };
+//     }
+//   }
+// }
 
-// Protect all routes below with auth
-router.use(mockAuthMiddleware);
+// // Protect all routes below with auth
+// router.use(mockAuthMiddleware);
 
 // GET all craving types for user and built-in types
 router.get("/", async (req: Request, res: Response) => {
@@ -38,12 +38,13 @@ router.get("/", async (req: Request, res: Response) => {
     const types = await prisma.cravingType.findMany({
       where: {
         OR: [
-          { isCustom: false },          // built‑in
-          { isCustom: true, userId },   // this user’s customs
+          { isCustom: false },                    // Default types
+          { isCustom: true, userId: userId },     // User's custom types
         ],
       },
       orderBy: { name: "asc" },
     });
+
     res.json(types);
   } catch (error) {
     console.error(error);
