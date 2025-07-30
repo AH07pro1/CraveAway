@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, DevSettings } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import colors from '../utils/colors';
 import Purchases from 'react-native-purchases';
@@ -34,9 +34,10 @@ export default function PaywallScreen({ navigation }: any) {
 
   // Handle continue without subscribing (testing)
   async function continueWithoutSubscribe() {
-    await AsyncStorage.setItem('hasPaid', 'true'); // Mark as paid for testing
-    navigation.replace('Tabs');
-  }
+  await AsyncStorage.setItem('hasPaid', 'true');
+navigation.replace('Tabs');
+}
+
 
   return (
     <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
@@ -57,7 +58,7 @@ export default function PaywallScreen({ navigation }: any) {
 
         <View className="items-center mb-8">
           <Text className="text-xl font-bold mb-2" style={{ color: colors.primary }}>$4.99/month</Text>
-          <Text className="text-sm text-gray-500">No subscriptions. Pay once, heal forever.</Text>
+          <Text className="text-sm text-gray-500">Pay once, heal forever.</Text>
         </View>
 
         <TouchableOpacity
@@ -69,12 +70,12 @@ export default function PaywallScreen({ navigation }: any) {
           <Text className="text-white font-bold text-lg">Subscribe Now</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity
+        {/* <TouchableOpacity
           onPress={continueWithoutSubscribe}
           activeOpacity={0.6}
         >
           <Text className="text-sm underline text-gray-500">Continue without subscribing</Text>
-        </TouchableOpacity>
+        </TouchableOpacity> */}
       </View>
     </ScrollView>
   );

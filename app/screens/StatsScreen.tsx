@@ -21,8 +21,7 @@ export default function StatsScreen({ navigation }: any) {
   const [loading, setLoading] = useState(true);
   const [dailyStats, setDailyStats] = useState<any>({});
   const [averageIntensity, setAverageIntensity] = useState(0);
-  const [streak, setStreak] = useState(0);
-  const [longestStreak, setLongestStreak] = useState(0);
+  const [longestStreakInfo, setLongestStreakInfo] = useState<{ type: string; streak: number }>({ type: '', streak: 0 });
   const [view, setView] = useState<'weekly' | 'monthly' | 'all'>('weekly');
   const [tooltipIndex, setTooltipIndex] = useState<number | null>(null);
   const [tooltipType, setTooltipType] = useState<'resist' | 'gaveIn' | 'total' | null>(null);
@@ -33,52 +32,51 @@ export default function StatsScreen({ navigation }: any) {
   const [gaveInCount, setGaveInCount] = useState(0);
   const [resistRatio, setResistRatio] = useState('0.0');
 
-  // Calculate current streak
-  function calculateStreak(data: any[]) {
-    const gaveInDates: { [date: string]: boolean } = {};
+  // New longest streak calculation (per type)
+  function calculateLongestStreaksByType(data: any[]) {
+    const grouped: { [type: string]: { date: string; resolved: boolean }[] } = {};
+
     data.forEach((c) => {
-      const date = format(parseISO(c.createdAt), 'yyyy-MM-dd');
-      if (!c.resolved) gaveInDates[date] = true;
+      const type = c.type?.name || "Unknown";
+      const date = format(parseISO(c.createdAt), "yyyy-MM-dd");
+      if (!grouped[type]) grouped[type] = [];
+      grouped[type].push({ date, resolved: c.resolved });
     });
 
-    let streakCount = 0;
-    let cursor = new Date();
+    const result: { [type: string]: number } = {};
+    const today = new Date();
 
-    while (true) {
-      const dayStr = format(cursor, 'yyyy-MM-dd');
-      if (gaveInDates[dayStr]) break;
-      streakCount++;
-      cursor.setDate(cursor.getDate() - 1);
-      if (streakCount > 365) break;
-    }
+    Object.entries(grouped).forEach(([type, entries]) => {
+      const gaveInByDate: { [d: string]: boolean } = {};
+      entries.forEach((e) => {
+        if (!e.resolved) gaveInByDate[e.date] = true;
+      });
 
-    return streakCount;
-  }
+      const oldestDateStr = entries.reduce(
+        (oldest, e) => (e.date < oldest ? e.date : oldest),
+        entries[0].date
+      );
 
-  // Calculate longest streak
-  function calculateLongestStreak(data: any[]) {
-    const gaveInDates: { [date: string]: boolean } = {};
-    data.forEach((c) => {
-      const date = format(parseISO(c.createdAt), 'yyyy-MM-dd');
-      if (!c.resolved) gaveInDates[date] = true;
-    });
+      let streak = 0;
+      let cursor = new Date(today);
 
-    let longest = 0;
-    let current = 0;
-    const dates = Array.from(
-      new Set(data.map((c) => format(parseISO(c.createdAt), 'yyyy-MM-dd')))
-    ).sort();
+      while (true) {
+        const dStr = format(cursor, "yyyy-MM-dd");
+        if (dStr < oldestDateStr) break;
+        if (gaveInByDate[dStr]) break;
 
-    for (let i = 0; i < dates.length; i++) {
-      if (!gaveInDates[dates[i]]) {
-        current++;
-      } else {
-        if (current > longest) longest = current;
-        current = 0;
+        streak += 1;
+        cursor.setDate(cursor.getDate() - 1);
+        if (streak > 365) break;
       }
-    }
-    if (current > longest) longest = current;
-    return longest;
+
+      result[type] = streak;
+    });
+
+    return Object.entries(result).reduce(
+      (acc, [type, s]) => (s > acc.streak ? { type, streak: s } : acc),
+      { type: "", streak: 0 }
+    );
   }
 
   useEffect(() => {
@@ -88,10 +86,9 @@ export default function StatsScreen({ navigation }: any) {
 
       try {
         const res = await fetch(`${API_URL}/api/craving?userId=${user.id}`);
-const data = await res.json();
-console.log("✅ Response:", data);
-setCravings(data);
-
+        const data = await res.json();
+        console.log("✅ Response:", data);
+        setCravings(data);
 
         const stats: any = {};
         let totalIntensity = 0;
@@ -117,8 +114,7 @@ setCravings(data);
         setGaveInCount(gaveIn);
         setResistRatio(ratio);
 
-        setStreak(calculateStreak(data));
-        setLongestStreak(calculateLongestStreak(data));
+        setLongestStreakInfo(calculateLongestStreaksByType(data));
       } catch (err) {
         console.error(err);
       } finally {
@@ -215,14 +211,14 @@ setCravings(data);
   let chartData: any[] = [];
 
   if (view === 'weekly') {
-  const selectedDates = getWeeklyLabels(); // returns dates like '2025-07-19'
-  chartData = getWeeklyChartData(dailyStats, selectedDates);
-  formattedLabels = selectedDates.map((date) => {
-    // convert to day abbreviation e.g. 'Mon'
-    return format(parseISO(date), 'EEE');
-  });
-}
-else if (view === 'monthly') {
+    const selectedDates = getWeeklyLabels(); // returns dates like '2025-07-19'
+    chartData = getWeeklyChartData(dailyStats, selectedDates);
+    formattedLabels = selectedDates.map((date) => {
+      // convert to day abbreviation e.g. 'Mon'
+      return format(parseISO(date), 'EEE');
+    });
+  }
+  else if (view === 'monthly') {
     const { labels, data } = getMonthlyLabelsAndData(cravings);
     formattedLabels = labels;
     chartData = data;
@@ -252,21 +248,21 @@ else if (view === 'monthly') {
 
   let chartBarData;
 
- if (view === 'weekly') {
-  chartBarData = chartData.flatMap((item, i) => [
-    {
-      label: formattedLabels[i],  // e.g. 'Mon', 'Tue', etc. — use formattedLabels here
-      value: item.resist,
-      frontColor: '#16a34a',
-    },
-    {
-      label: '',  // no label on gaveIn bars
-      value: item.gaveIn,
-      frontColor: '#ef4444',
-    },
-  ]);
-}
- else {
+  if (view === 'weekly') {
+    chartBarData = chartData.flatMap((item, i) => [
+      {
+        label: formattedLabels[i],  // e.g. 'Mon', 'Tue', etc. — use formattedLabels here
+        value: item.resist,
+        frontColor: '#16a34a',
+      },
+      {
+        label: '',  // no label on gaveIn bars
+        value: item.gaveIn,
+        frontColor: '#ef4444',
+      },
+    ]);
+  }
+  else {
     chartBarData = chartData.map((item, index) => ({
       label: formattedLabels[index],
       value: item.total,
@@ -350,27 +346,21 @@ else if (view === 'monthly') {
             </Text>
             <Text className="text-gray-600">Gave In</Text>
           </View>
-          <View className="items-center">
-            <Text className="text-xl font-semibold" style={{ color: colors.primary }}>
-              {resistRatio}%
-            </Text>
-            <Text className="text-gray-600">Resist Ratio</Text>
-          </View>
         </View>
 
         {/* Streak and average intensity display */}
         <View className="bg-white p-6 rounded-xl shadow flex-row justify-around mb-8">
           <View className="items-center">
             <Text className="text-xl font-semibold" style={{ color: colors.primary }}>
-              {streak}
+              {longestStreakInfo.streak}
             </Text>
-            <Text className="text-gray-600">Current Streak</Text>
+            <Text className="text-gray-600">Longest Streak</Text>
           </View>
           <View className="items-center">
             <Text className="text-xl font-semibold" style={{ color: colors.primary }}>
-              {longestStreak}
+              {resistRatio}%
             </Text>
-            <Text className="text-gray-600">Longest Streak</Text>
+            <Text className="text-gray-600">Resist Ratio</Text>
           </View>
           <View className="items-center">
             <Text className="text-xl font-semibold" style={{ color: colors.primary }}>
@@ -382,13 +372,12 @@ else if (view === 'monthly') {
 
         {/* Button to navigate to Streak Details screen */}
         <View className="mb-6 items-center">
-        <Pressable
-  onPress={() => navigation.navigate('StreakDetails', { cravings })}
-  className="bg-blue-600 px-6 py-3 rounded-full shadow"
->
-  <Text className="text-white font-semibold text-lg">View Streak Details</Text>
-</Pressable>
-
+          <Pressable
+            onPress={() => navigation.navigate('StreakDetails', { cravings })}
+            className="bg-blue-600 px-6 py-3 rounded-full shadow"
+          >
+            <Text className="text-white font-semibold text-lg">View Streak Details</Text>
+          </Pressable>
         </View>
 
         {/* Chart container */}
@@ -404,7 +393,6 @@ else if (view === 'monthly') {
             data={chartBarData}
             barWidth={baseBarWidth}
             spacing={view === 'monthly' ? baseSpacing * 2 : baseSpacing}
-
             noOfSections={4}
             maxValue={Math.max(...chartBarData.map((d) => d.value), 1)}
             yAxisTextStyle={{ color: '#666', fontSize: 12 }}
@@ -461,14 +449,12 @@ else if (view === 'monthly') {
                 );
               }
             }}
-           xAxisLabelTextFormatter={(label: string, index: number) => {
-  if (view === 'weekly') {
-    return formattedLabels[index] || '';
-  }
-  return label;
-}}
-
-
+            xAxisLabelTextFormatter={(label: string, index: number) => {
+              if (view === 'weekly') {
+                return formattedLabels[index] || '';
+              }
+              return label;
+            }}
           />
         </View>
       </ScrollView>

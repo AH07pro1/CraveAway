@@ -55,6 +55,8 @@ export default function CalmingSessionScreen({ navigation }: any) {
   const animationTimerRef = useRef<NodeJS.Timeout | null>(null);
   const timerInterval = useRef<NodeJS.Timeout | null>(null);
   const breathingInterval = useRef<NodeJS.Timeout | null>(null);
+  const DEFAULT_VOICE_ID = "en-us-x-tpf-local"; // Choose your preferred default voice
+
 
   const progressAnim = useRef(new RNAnimated.Value(1)).current;
   const scale = useSharedValue(1);
@@ -88,7 +90,7 @@ export default function CalmingSessionScreen({ navigation }: any) {
     Speech.stop();
     if (voiceRef.current) Speech.speak("Inhale", {
   rate: 0.9,
-  voice: selectedVoice?.identifier,
+  voice: DEFAULT_VOICE_ID
 });
 
     scale.value = withTiming(1.5, { duration: BREATH_DURATION / 2 });
@@ -100,7 +102,7 @@ export default function CalmingSessionScreen({ navigation }: any) {
         Speech.stop();
         if (voiceRef.current) Speech.speak(next, {
   rate: 0.9,
-  voice: selectedVoice?.identifier,
+  voice: DEFAULT_VOICE_ID
 });
 
         scale.value = withTiming(next === "Inhale" ? 1.5 : 0.9, {
@@ -158,7 +160,7 @@ export default function CalmingSessionScreen({ navigation }: any) {
     Speech.stop();
     if (voiceRef.current) Speech.speak(steps[step], {
   rate: 0.9,
-  voice: selectedVoice?.identifier,
+  voice: DEFAULT_VOICE_ID
 });
 
     startBoxLoop();
@@ -171,7 +173,7 @@ export default function CalmingSessionScreen({ navigation }: any) {
       Speech.stop();
       if (voiceRef.current) Speech.speak(steps[step], {
   rate: 0.9,
-  voice: selectedVoice?.identifier,
+  voice: DEFAULT_VOICE_ID
 });
     }, BREATH_DURATION / 4);
   }, [moveAnim]);

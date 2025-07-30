@@ -26,7 +26,7 @@ const [xpGained, setXpGained] = useState<number | null>(null);
    useEffect(() => {
     const sendXP = async () => {
   try {
-    const response = await fetch("${API_URL}/api/session-complete", {
+    const response = await fetch(`${API_URL}/api/session-complete`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

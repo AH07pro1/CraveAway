@@ -5,14 +5,18 @@
     "slug": "CraveAway",
     "scheme": "craveaway",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/splash-icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
-    "splash": {
-      "image": "./assets/app_icon_splash.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
-    },
+    
+        "expo-splash-screen":
+        {
+          "backgroundColor": "34ABFF",
+          "image": "./assets/splash-icon.png",
+
+          "imageWidth": 200
+        },
+      
     "ios": {
       "supportsTablet": true
     },
@@ -46,5 +50,9 @@
         "projectId": "e24b80ab-e5c8-438b-8762-67bc0b9fb6da"
       }
     }
+
+    
+
+
   }
 }
