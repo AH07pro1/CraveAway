@@ -19,10 +19,6 @@ const REVENUECAT_API_KEY =
     android: 'goog_lTWAjIdmkcFLTnkNzVyEhdLiVZL',
   }) ?? '';
 
-
-
-
-
 const tokenCache = {
   async getToken(key: string) {
     return SecureStore.getItemAsync(key);
@@ -38,6 +34,18 @@ export default function App() {
 
   useEffect(() => {
   Purchases.configure({ apiKey: REVENUECAT_API_KEY });
+}, []); // fixes the error in the build were the subscribe button was not working(supposedly it's a test)
+
+useEffect(() => {
+  const listener = Purchases.addCustomerInfoUpdateListener(async (customerInfo) => {
+    const isPro = typeof customerInfo.entitlements.active['Monthly Membership'] !== 'undefined';
+    if (isPro) {
+      await AsyncStorage.setItem('hasPaid', 'true');
+      setHasPaid(true); // <- this makes App re-render and go to <Navigation />
+    }
+  });
+
+
 }, []);
 
   useEffect(() => {
@@ -58,6 +66,24 @@ export default function App() {
     // Show splash/loading screen or null while checking
     return null;
   }
+
+  useEffect(() => {
+  async function syncWithRevenueCat() {
+    try {
+      const customerInfo = await Purchases.getCustomerInfo();
+      const isPro = typeof customerInfo.entitlements.active['Monthly Membership'] !== 'undefined';
+      if (isPro) {
+        await AsyncStorage.setItem('hasPaid', 'true');
+        setHasPaid(true);
+      }
+    } catch (e) {
+      console.warn('Failed to fetch RevenueCat info:', e);
+    }
+  }
+
+  syncWithRevenueCat();
+}, []);
+
 
   return (
     <ClerkProvider

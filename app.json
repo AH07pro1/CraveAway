@@ -5,7 +5,7 @@
     "slug": "CraveAway",
     "scheme": "craveaway",
     "orientation": "portrait",
-    "icon": "./assets/splash-icon.png",
+    "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     
