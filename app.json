@@ -11,7 +11,7 @@
     
         "expo-splash-screen":
         {
-          "backgroundColor": "34ABFF",
+          "backgroundColor": "#34ABFF",
           "image": "./assets/splash-icon.png",
 
           "imageWidth": 200
@@ -23,8 +23,8 @@
     "android": {
       "versionCode": 7,
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "foregroundImage": "./assets/icon.png",
+        "backgroundColor": "#34ABFF"
       },
       "edgeToEdgeEnabled": true,
       "package": "com.ah07.CraveAway"
