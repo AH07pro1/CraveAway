@@ -14,10 +14,11 @@ import '../global.css';
 import Purchases from 'react-native-purchases';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const REVENUECAT_API_KEY = Platform.select({
-  // ios: 'your_ios_revenuecat_key',
-  android: 'goog_lTWAjIdmkcFLTnkNzVyEhdLiVZL',
-});
+const REVENUECAT_API_KEY =
+  Platform.select({
+    android: 'goog_lTWAjIdmkcFLTnkNzVyEhdLiVZL',
+  }) ?? '';
+
 
 
 
@@ -34,6 +35,10 @@ const tokenCache = {
 export default function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [hasPaid, setHasPaid] = useState(false);
+
+  useEffect(() => {
+  Purchases.configure({ apiKey: REVENUECAT_API_KEY });
+}, []);
 
   useEffect(() => {
     async function checkPayment() {
