@@ -12,6 +12,7 @@ import '../global.css';
 
 import Purchases from 'react-native-purchases';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import RootNavigator from './navigation/Navigation';
 
 const REVENUECAT_API_KEY = Platform.select({
   android: 'goog_lTWAjIdmkcFLTnkNzVyEhdLiVZL',
@@ -72,9 +73,13 @@ export default function App() {
       <GestureHandlerRootView style={{ flex: 1 }}>
         <NavigationContainer>
           <SignedIn>
-            <VoiceProvider>
+            {/* <VoiceProvider>
               {hasPaid ? <Navigation /> : <OnboardingOrPaywallNavigator />}
-            </VoiceProvider>
+            </VoiceProvider> */}
+            <VoiceProvider>
+  <RootNavigator />
+</VoiceProvider>
+
           </SignedIn>
           <SignedOut>
             <AuthStack />
