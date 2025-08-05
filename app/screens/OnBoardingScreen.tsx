@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import colors from '../utils/colors';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
+import {useAppState } from '../context/AppStateContext';
 const steps = [
   {
     type: 'intro',
@@ -48,6 +48,7 @@ const steps = [
 ];
 
 export default function OnboardingScreen({ navigation }: any) {
+  const { setHasOnboarded } = useAppState();
   const [stepIndex, setStepIndex] = useState(0);
   const [answers, setAnswers] = useState({
     habit: '',
@@ -92,10 +93,14 @@ export default function OnboardingScreen({ navigation }: any) {
     // Save onboarding completion flag
     try {
       await AsyncStorage.setItem('hasOnboarded', 'true');
+setHasOnboarded(true); // ✅ this updates app state
+navigation.navigate('Paywall'); // ✅ go to paywall
+
     } catch (error) {
       console.warn('Failed to save onboarding flag', error);
     }
-    navigation.replace('Paywall');
+    navigation.navigate('Paywall');
+
   }
 };
   return (

@@ -3,6 +3,7 @@ import { View, Text, TextInput, TouchableOpacity } from 'react-native';
 import { useSignUp } from '@clerk/clerk-expo';
 import { useNavigation } from '@react-navigation/native';
 import colors from '../../utils/colors';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function SignUpScreen() {
   const { isLoaded, signUp, setActive } = useSignUp();
@@ -31,23 +32,29 @@ export default function SignUpScreen() {
     }
   };
 
-  const onVerifyPress = async () => {
-    if (!isLoaded) return;
-    setError(null);
+ const onVerifyPress = async () => {
+  if (!isLoaded) return;
+  setError(null);
 
-    try {
-      const signUpAttempt = await signUp.attemptEmailAddressVerification({ code });
+  try {
+    const signUpAttempt = await signUp.attemptEmailAddressVerification({ code });
 
-      if (signUpAttempt.status === 'complete') {
-        await setActive({ session: signUpAttempt.createdSessionId });
-        navigation.replace('Home');
-      } else {
-        setError('Verification incomplete. Please try again.');
-      }
-    } catch (err: any) {
-      setError(err?.errors?.[0]?.message || 'Verification failed.');
+    if (signUpAttempt.status === 'complete') {
+      await setActive({ session: signUpAttempt.createdSessionId });
+
+      const hasPaid = await AsyncStorage.getItem('hasPaid');
+     navigation.reset({
+  index: 0,
+  routes: [{ name: hasPaid === 'true' ? 'Tabs' : 'Paywall' }],
+});
+    } else {
+      setError('Verification incomplete. Please try again.');
     }
-  };
+  } catch (err: any) {
+    setError(err?.errors?.[0]?.message || 'Verification failed.');
+  }
+};
+
 
   if (pendingVerification) {
     return (

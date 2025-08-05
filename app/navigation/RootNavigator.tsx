@@ -1,52 +1,26 @@
-import React, { useEffect, useState } from 'react';
+// navigation/RootNavigator.tsx
+import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import Tabs from './Tabs';
-import OnboardingScreen from '../screens/OnBoardingScreen';
-import PaywallScreen from '../screens/PaywallScreen';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useAppState } from '../context/AppStateContext';
+import AuthStack from './AuthStack';
 
 const Stack = createNativeStackNavigator();
 
 export default function RootNavigator() {
-  const [isLoading, setIsLoading] = useState(true);
-  const [hasOnboarded, setHasOnboarded] = useState(false);
-  const [hasPaid, setHasPaid] = useState(false);
+  const { hasOnboarded, hasPaid } = useAppState();
 
-  useEffect(() => {
-    async function checkFlags() {
-      try {
-        const onboarded = await AsyncStorage.getItem('hasOnboarded');
-        const paid = await AsyncStorage.getItem('hasPaid');
-        setHasOnboarded(onboarded === 'true');
-        setHasPaid(paid === 'true');
-      } catch (error) {
-        console.error('Error reading onboarding/payment flags:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    }
-    checkFlags();
-  }, []);
+  let initialRoute = 'Tabs'; // default if all good
 
-  if (isLoading) {
-    // You can replace this with a proper loading component/screen
-    return null;
-  }
-
-  // Decide initial route based on flags
-  let initialRoute = 'Onboarding';
-  if (hasOnboarded) {
-    initialRoute = hasPaid ? 'Tabs' : 'Paywall';
-  }
+  if (!hasOnboarded) initialRoute = 'Onboarding';
+  else if (!hasPaid) initialRoute = 'Paywall';
 
   return (
-    <Stack.Navigator
-      initialRouteName={initialRoute}
-      screenOptions={{ headerShown: false }}
-    >
-      <Stack.Screen name="Onboarding" component={OnboardingScreen} />
-      <Stack.Screen name="Paywall" component={PaywallScreen} />
+    <Stack.Navigator initialRouteName={initialRoute} screenOptions={{ headerShown: false }}>
+      {!hasOnboarded && <Stack.Screen name="Onboarding" component={require('../screens/OnBoardingScreen').default} />}
+      {!hasPaid && <Stack.Screen name="Paywall" component={require('../screens/PaywallScreen').default} />}
       <Stack.Screen name="Tabs" component={Tabs} />
+      <Stack.Screen name="AuthStack" component={AuthStack} />
     </Stack.Navigator>
   );
 }

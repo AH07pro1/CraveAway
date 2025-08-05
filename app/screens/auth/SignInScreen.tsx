@@ -4,6 +4,7 @@ import { useSignIn } from '@clerk/clerk-expo';
 import { useNavigation } from '@react-navigation/native';
 import colors from '../../utils/colors';
 import GoogleSignInButton from './components/GoogleSignInButton';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function SignInScreen() {
   const { signIn, setActive, isLoaded } = useSignIn();
@@ -14,25 +15,33 @@ export default function SignInScreen() {
   const [error, setError] = React.useState<string | null>(null);
 
   const onSignInPress = async () => {
-    if (!isLoaded) return;
-    setError(null);
+  if (!isLoaded) return;
+  setError(null);
 
-    try {
-      const signInAttempt = await signIn.create({
-        identifier: emailAddress,
-        password,
-      });
+  try {
+    const signInAttempt = await signIn.create({
+      identifier: emailAddress,
+      password,
+    });
 
-      if (signInAttempt.status === 'complete') {
-        await setActive({ session: signInAttempt.createdSessionId });
-        navigation.replace('Home');
-      } else {
-        setError('Sign in incomplete. Please try again.');
-      }
-    } catch (err: any) {
-      setError(err?.errors?.[0]?.message || 'Sign in failed.');
+    if (signInAttempt.status === 'complete') {
+      await setActive({ session: signInAttempt.createdSessionId });
+
+      const hasPaid = await AsyncStorage.getItem('hasPaid');
+
+// Reset navigation to avoid going back to auth
+navigation.reset({
+  index: 0,
+  routes: [{ name: hasPaid === 'true' ? 'Tabs' : 'Paywall' }],
+});
+    } else {
+      setError('Sign in incomplete. Please try again.');
     }
-  };
+  } catch (err: any) {
+    setError(err?.errors?.[0]?.message || 'Sign in failed.');
+  }
+};
+
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background, padding: 24, justifyContent: 'center' }}>
