@@ -37,10 +37,14 @@ model CravingEvent {
 }
 
 model UserProgress {
-  id      Int    @id @default(autoincrement())
-  userId  String @unique
-  xp      Int    @default(0)
-  level   Int    @default(1)
+  id        Int     @id @default(autoincrement())
+  userId    String  @unique
+  xp        Int     @default(0)
+  level     Int     @default(1)
+  
+  message   String?       // user commitment message
+  photoUrl  String?       // uploaded photo URL
+  committed Boolean @default(false) // true if they completed onboarding
 }
 
 model UserDailyCheckin {

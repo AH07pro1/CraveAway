@@ -3,13 +3,15 @@ import { View, Text, Image, Alert, TouchableOpacity, ScrollView } from 'react-na
 import { useUser, useClerk } from '@clerk/clerk-expo';
 import { format } from 'date-fns';
 import colors from '../utils/colors';
-import { useNavigation } from '@react-navigation/native';
+import { CommonActions, useNavigation } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useAppState } from '../context/AppStateContext';
 
 export default function ProfileScreen() {
   const { user, isLoaded } = useUser();
   const { signOut } = useClerk();
   const navigation = useNavigation<any>();
-
+const { setIsSignedIn, setHasPaid } = useAppState();
   if (!isLoaded) {
     return (
       <View className="flex-1 justify-center items-center" style={{ backgroundColor: colors.background }}>
@@ -30,23 +32,25 @@ export default function ProfileScreen() {
   const createdDate = user.createdAt ? format(new Date(user.createdAt), 'PPP') : 'N/A';
   const lastSignInDate = user.lastSignInAt ? format(new Date(user.lastSignInAt), 'PPP p') : 'N/A';
 
-  const handleSignOut = () => {
-    Alert.alert('Confirm Sign Out', 'Are you sure you want to sign out?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Sign Out',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await signOut();
-            navigation.replace('SignIn');
-          } catch (err) {
-            console.error("Error signing out", err);
-          }
-        },
+ const handleSignOut = () => {
+  Alert.alert('Confirm Sign Out', 'Are you sure you want to sign out?', [
+    { text: 'Cancel', style: 'cancel' },
+    {
+      text: 'Sign Out',
+      style: 'destructive',
+      onPress: async () => {
+        try {
+          await signOut(); // Clerk sign-out
+          await AsyncStorage.setItem('hasOnboarded', 'true'); // So we skip onboarding next time
+          setIsSignedIn(false); // 🔥 This triggers Navigator rerender
+          setHasPaid(false);    // Optional: show Paywall again
+        } catch (err) {
+          console.error("Error signing out", err);
+        }
       },
-    ]);
-  };
+    },
+  ]);
+};
 
   const handleDeleteAccount = () => {
     Alert.alert(

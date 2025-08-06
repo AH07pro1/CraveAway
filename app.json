@@ -18,7 +18,10 @@
         },
       
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSCameraUsageDescription": "This app needs camera access to take your Day 1 photo."
+      }
     },
     "android": {
       "versionCode": 7,
@@ -26,6 +29,7 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#34ABFF"
       },
+      "permissions": ["CAMERA"],
       "edgeToEdgeEnabled": true,
       "package": "com.ah07.CraveAway"
     },

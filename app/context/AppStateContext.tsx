@@ -11,9 +11,11 @@ type AppState = {
   hasOnboarded: boolean;
   hasPaid: boolean;
   isSignedIn: boolean;
-  setHasPaid: (paid: boolean) => void;  // add setter here
-  setHasOnboarded: (onboarded: boolean) => void; // maybe also this
+  setHasPaid: (paid: boolean) => void;
+  setHasOnboarded: (onboarded: boolean) => void;
+  setIsSignedIn: (signedIn: boolean) => void; // <- ADD THIS
 };
+
 
 const AppStateContext = createContext<AppState | undefined>(undefined);
 
@@ -22,6 +24,7 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [isLoading, setIsLoading] = useState(true);
   const [hasPaidState, setHasPaidState] = useState(false);
   const [hasOnboardedState, setHasOnboardedState] = useState(false);
+const [isSignedInState, setIsSignedInState] = useState(false);
 
    const setHasPaid = (paid: boolean) => {
     setHasPaidState(paid);
@@ -34,6 +37,9 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   
+useEffect(() => {
+  setIsSignedInState(!!isSignedIn); // keep in sync with Clerk
+}, [isSignedIn]);
 
   
   useEffect(() => {
@@ -89,7 +95,8 @@ export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       hasPaid: hasPaidState, 
       isSignedIn: !!isSignedIn,
       setHasPaid,
-      setHasOnboarded
+      setHasOnboarded,
+      setIsSignedIn: setIsSignedInState,
     }}>
       {children}
     </AppStateContext.Provider>

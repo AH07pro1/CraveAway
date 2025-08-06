@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,50 +6,44 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
+  ScrollView,
+  Image,
+  Alert,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
+import SignatureCanvas from 'react-native-signature-canvas';
 import colors from '../utils/colors';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import {useAppState } from '../context/AppStateContext';
+import { useAppState } from '../context/AppStateContext';
+
 const steps = [
+  { type: 'intro', title: 'Welcome to CraveAway', description: 'Let’s help you take control of your cravings.' },
+  { type: 'question', title: 'What do you want to gain control over?', options: ['Smoking', 'Overeating', 'Phone addiction', 'Drinking', 'Other'] },
+  { type: 'input', title: 'Write your habit below:' },
+  { type: 'question', title: 'When do cravings hit hardest?', options: ['When I’m stressed', 'At night', 'After eating', 'When I’m alone', 'Other'] },
+  { type: 'question', title: 'How does it usually make you feel?', options: ['Anxious', 'Guilty', 'Powerless', 'Empty', 'I don’t know'] },
+  { type: 'text', title: 'Imagine your life without it...', description: 'No guilt. No loss of control. Just calm and clarity.' },
+  { type: 'text', title: 'CraveAway helps you get there.', description: 'Track urges. Breathe. Build streaks. Let’s start now.' },
+
+  // Commitment decision
   {
-    type: 'intro',
-    title: 'Welcome to CraveAway',
-    description: 'Let’s help you take control of your cravings.',
+    type: 'commitmentCheck',
+    title: 'Are You Ready to Commit?',
+    description: 'The next steps are only for those who are serious about changing their life. Are you ready to commit?',
   },
-  {
-    type: 'question',
-    title: 'What do you want to gain control over?',
-    options: ['Smoking', 'Overeating', 'Phone addiction', 'Drinking', 'Other'],
-  },
-  {
-    type: 'input',
-    title: 'Write your habit below:',
-  },
-  {
-    type: 'question',
-    title: 'When do cravings hit hardest?',
-    options: ['When I’m stressed', 'At night', 'After eating', 'When I’m alone', 'Other'],
-  },
-  {
-    type: 'question',
-    title: 'How does it usually make you feel?',
-    options: ['Anxious', 'Guilty', 'Powerless', 'Empty', 'I don’t know'],
-  },
-  {
-    type: 'text',
-    title: 'Imagine your life without it...',
-    description: 'No guilt. No loss of control. Just calm and clarity.',
-  },
-  {
-    type: 'text',
-    title: 'CraveAway helps you get there.',
-    description: 'Track urges. Breathe. Build streaks. Let’s start now.',
-  },
+
+  // Only shown if committed
+  { type: 'photo', title: 'Take your Day 1 Photo' },
+  { type: 'signature', title: 'Sign Your Commitment' },
+  { type: 'message', title: 'Write a Personal Message' },
 ];
+
 
 export default function OnboardingScreen({ navigation }: any) {
   const { setHasOnboarded } = useAppState();
   const [stepIndex, setStepIndex] = useState(0);
+
+  // Answers for existing questions
   const [answers, setAnswers] = useState({
     habit: '',
     trigger: '',
@@ -57,15 +51,24 @@ export default function OnboardingScreen({ navigation }: any) {
   });
   const [inputValue, setInputValue] = useState('');
 
+  // New states for photo, signature, message
+  const [photoUri, setPhotoUri] = useState<string | null>(null);
+  const [signature, setSignature] = useState<string | null>(null);
+  const [message, setMessage] = useState('');
+const [committed, setCommitted] = useState(false);
+
+  const signatureRef = useRef<any>(null);
+
   const currentStep = steps[stepIndex];
 
+  // Handle selecting options in questions
   const handleOptionSelect = (option: string) => {
     if (stepIndex === 1) {
       if (option === 'Other') {
-        setStepIndex(stepIndex + 1);
+        setStepIndex(stepIndex + 1); // Go to input habit
       } else {
         setAnswers({ ...answers, habit: option });
-        setStepIndex(stepIndex + 2); // Skip input step
+        setStepIndex(stepIndex + 2); // Skip input habit
       }
     } else if (stepIndex === 3) {
       setAnswers({ ...answers, trigger: option });
@@ -76,6 +79,7 @@ export default function OnboardingScreen({ navigation }: any) {
     }
   };
 
+  // Handle input text submit for habit
   const handleInputSubmit = () => {
     if (inputValue.trim()) {
       if (stepIndex === 2) {
@@ -86,108 +90,510 @@ export default function OnboardingScreen({ navigation }: any) {
     }
   };
 
-  const handleNext = async () => {
-  if (stepIndex < steps.length - 1) {
-    setStepIndex(stepIndex + 1);
-  } else {
-    // Save onboarding completion flag
-    try {
-      await AsyncStorage.setItem('hasOnboarded', 'true');
-setHasOnboarded(true); // ✅ this updates app state
-navigation.navigate('Paywall'); // ✅ go to paywall
+  useEffect(() => {
+    (async () => {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Camera permission is required to take your photo.');
+      }
+    })();
+  }, []);
 
-    } catch (error) {
-      console.warn('Failed to save onboarding flag', error);
+  useEffect(() => {
+  (async () => {
+    const savedUri = await AsyncStorage.getItem('photoUri');
+    if (savedUri) {
+      setPhotoUri(savedUri);
     }
-    navigation.navigate('Paywall');
+  })();
+}, []);
 
+  const checkPermissions = async () => {
+    const { status } = await ImagePicker.getCameraPermissionsAsync();
+    if (status !== 'granted') {
+      const { status: newStatus } = await ImagePicker.requestCameraPermissionsAsync();
+      if (newStatus !== 'granted') {
+        Alert.alert('Permission denied', 'Camera access is required to take your photo.');
+        return false;
+      }
+    }
+    return true;
+  };
+
+  // Image picker for photo step
+const pickImage = async () => {
+  const hasPermission = await checkPermissions();
+  if (!hasPermission) return;
+
+  try {
+    const result = await ImagePicker.launchCameraAsync({
+      quality: 0.7,
+      base64: false,
+    });
+    if (!result.canceled) {
+      const uri = result.assets[0].uri;
+      setPhotoUri(uri);
+      await AsyncStorage.setItem('photoUri', uri);
+    }
+  } catch (e) {
+    const errorMessage = (e instanceof Error && e.message) ? e.message : 'Something went wrong taking the photo.';
+    Alert.alert('Error', errorMessage);
   }
 };
+
+
+
+  // Signature done callback
+  const handleSignature = (signatureData: string) => {
+    setSignature(signatureData);
+  };
+
+  // Clear signature button
+  const clearSignature = () => {
+    signatureRef.current?.clearSignature();
+    setSignature(null);
+  };
+
+  // Next button logic for all steps
+  const handleNext = async () => {
+    // Validate steps
+
+    if (currentStep.type === 'photo' && !photoUri) {
+      // Alert.alert('Please take your Day 1 photo to continue.');
+      // return;
+    }
+    if (currentStep.type === 'signature' && !signature) {
+      Alert.alert('Please provide your signature to continue.');
+      return;
+    }
+    if (currentStep.type === 'message' && message.trim().length === 0) {
+      Alert.alert('Please enter a personal message to continue.');
+      return;
+    }
+if (currentStep.type === 'message') {
+  try {
+    await AsyncStorage.setItem('hasOnboarded', 'true');
+    setHasOnboarded(true);
+    Alert.alert('Thank you for committing!');
+    navigation.navigate('Paywall');
+  } catch (error) {
+    console.warn('Failed to save onboarding flag', error);
+  }
+}
+if (stepIndex >= steps.length - 1) {
+  try {
+    await AsyncStorage.setItem('hasOnboarded', 'true');
+    setHasOnboarded(true);
+    navigation.navigate('Paywall');
+  } catch (error) {
+    console.warn('Failed to save onboarding flag on skip to end', error);
+  }
+}
+
+    // Normal next for intro, questions, input, text steps
+    if (stepIndex < steps.length - 1) {
+      setStepIndex(stepIndex + 1);
+    }
+
+    // On last step (message), save onboarding & navigate
+    if (currentStep.type === 'message') {
+      try {
+        // Save onboarding complete flag
+        await AsyncStorage.setItem('hasOnboarded', 'true');
+        setHasOnboarded(true);
+
+        // Save or send user inputs here (optional)
+        // e.g. AsyncStorage.setItem('onboardingData', JSON.stringify({ answers, photoUri, signature, message }));
+
+        Alert.alert('Thank you for committing!');
+
+        // Navigate to Paywall
+        navigation.navigate('Paywall');
+      } catch (error) {
+        console.warn('Failed to save onboarding flag', error);
+      }
+    }
+  };
+
+  // Skip confirmation helper
+  const confirmSkip = (stepName: string) => {
+    Alert.alert(
+      `Skip ${stepName}?`,
+      `This step helps you commit to your journey. Are you sure you want to skip?`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Skip',
+          style: 'destructive',
+          onPress: () => setStepIndex(stepIndex + 1),
+        },
+      ]
+    );
+  };
+
   return (
     <KeyboardAvoidingView
-      className="flex-1 justify-center items-center px-6 bg-white"
-      style={{ backgroundColor: colors.background }}
+      style={{ flex: 1, backgroundColor: colors.background, padding: 24 }}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      <View className="w-full items-center">
+      <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}>
+        {/* Title */}
         <Text
-          className="text-3xl font-extrabold mb-4 text-center"
-          style={{ color: colors.primary }}
+          style={{
+            fontSize: 28,
+            fontWeight: '800',
+            color: colors.primary,
+            marginBottom: 24,
+            textAlign: 'center',
+          }}
         >
           {currentStep.title}
         </Text>
 
-        {currentStep.type === 'intro' || currentStep.type === 'text' ? (
+        {/* Step content rendering */}
+        {/* Intro & Text */}
+        {(currentStep.type === 'intro' || currentStep.type === 'text') && (
           <>
             <Text
-              className="text-base text-center mb-8"
-              style={{ color: colors.textSecondary }}
+              style={{
+                fontSize: 16,
+                color: colors.textSecondary,
+                textAlign: 'center',
+                marginBottom: 24,
+              }}
             >
               {currentStep.description}
             </Text>
             <TouchableOpacity
               onPress={handleNext}
-              className="bg-blue-600 rounded-full px-8 py-4"
-              style={{ backgroundColor: colors.primary }}
+              style={{ backgroundColor: colors.primary, paddingVertical: 16, borderRadius: 30, alignItems: 'center' }}
+              activeOpacity={0.85}
             >
-              <Text className="text-white font-bold text-lg">Continue</Text>
+              <Text style={{ color: 'white', fontWeight: '700', fontSize: 18 }}>Continue</Text>
             </TouchableOpacity>
           </>
-        ) : null}
+        )}
 
+        {/* Question Step */}
         {currentStep.type === 'question' && (
-          <View className="w-full">
+          <View>
             {currentStep.options?.map((option, index) => (
               <TouchableOpacity
                 key={index}
                 onPress={() => handleOptionSelect(option)}
-                className="border border-gray-300 rounded-xl px-4 py-3 mb-3"
                 style={{
+                  borderWidth: 1,
                   borderColor: colors.border,
+                  borderRadius: 20,
+                  paddingVertical: 14,
+                  paddingHorizontal: 24,
+                  marginBottom: 16,
                   backgroundColor: 'white',
+                  alignItems: 'center',
                 }}
               >
-                <Text className="text-base text-center" style={{ color: colors.textMain }}>
-                  {option}
-                </Text>
+                <Text style={{ fontSize: 16, color: colors.textMain }}>{option}</Text>
               </TouchableOpacity>
             ))}
           </View>
         )}
+        {currentStep.type === 'commitmentCheck' && (
+  <View style={{ alignItems: 'center' }}>
+    <Text style={{ fontSize: 16, color: colors.textSecondary, textAlign: 'center', marginBottom: 32 }}>
+      {currentStep.description}
+    </Text>
+    <TouchableOpacity
+    
+     onPress={() => {
+    setCommitted(true);
+    setStepIndex(stepIndex + 1);
+  }}// continue to photo
+      style={{
+        backgroundColor: colors.primary,
+        paddingVertical: 16,
+        paddingHorizontal: 40,
+        borderRadius: 30,
+        marginBottom: 16,
+      }}
+    >
+      <Text style={{ color: 'white', fontWeight: '700', fontSize: 18 }}>I’m Committed</Text>
+    </TouchableOpacity>
 
+    <TouchableOpacity
+      onPress={async () => {
+  try {
+    await AsyncStorage.setItem('hasOnboarded', 'true');
+    setHasOnboarded(true);
+    navigation.navigate('Paywall');
+  } catch (error) {
+    console.warn('Failed to save onboarding flag', error);
+  }
+}}
+ // skip photo/signature/message
+      style={{
+        paddingVertical: 16,
+        paddingHorizontal: 40,
+        borderRadius: 30,
+        borderWidth: 1,
+        borderColor: colors.primary,
+      }}
+    >
+      <Text style={{ color: colors.primary, fontWeight: '700', fontSize: 18 }}>Skip to End</Text>
+    </TouchableOpacity>
+  </View>
+)}
+
+
+        {/* Input Step */}
         {currentStep.type === 'input' && (
-          <View className="w-full mt-4">
+          <View>
             <TextInput
               placeholder="Type here..."
               value={inputValue}
               onChangeText={setInputValue}
-              className="border border-gray-300 rounded-xl px-4 py-3 mb-4 text-base"
+              style={{
+                borderWidth: 1,
+                borderColor: colors.border,
+                borderRadius: 20,
+                paddingVertical: 14,
+                paddingHorizontal: 20,
+                fontSize: 16,
+                color: colors.textMain,
+                backgroundColor: 'white',
+                marginBottom: 24,
+              }}
               placeholderTextColor="#999"
-              style={{ color: colors.textMain, borderColor: colors.border }}
+              onSubmitEditing={handleInputSubmit}
+              returnKeyType="done"
             />
             <TouchableOpacity
               onPress={handleInputSubmit}
-              className="bg-blue-600 rounded-full px-8 py-4"
-              style={{ backgroundColor: colors.primary }}
+              style={{ backgroundColor: colors.primary, paddingVertical: 16, borderRadius: 30, alignItems: 'center' }}
+              activeOpacity={0.85}
             >
-              <Text className="text-white font-bold text-lg">Continue</Text>
+              <Text style={{ color: 'white', fontWeight: '700', fontSize: 18 }}>Continue</Text>
             </TouchableOpacity>
           </View>
         )}
-      </View>
 
-      {/* Progress dots */}
-      <View className="flex-row mt-10 space-x-2">
-        {steps.map((_, i) => (
-          <View
-            key={i}
-            className={`w-3 h-3 rounded-full ${i === stepIndex ? 'bg-blue-600' : 'bg-gray-300'}`}
-            style={{
-              backgroundColor: i === stepIndex ? colors.primary : colors.border,
-            }}
-          />
-        ))}
-      </View>
+        {/* New Photo Step */}
+        {currentStep.type === 'photo' && (
+          <View style={{ alignItems: 'center' }}>
+            {photoUri ? (
+              <Image
+                source={{ uri: photoUri }}
+                style={{ width: 220, height: 220, borderRadius: 110, marginBottom: 24 }}
+              />
+            ) : (
+              <View
+                style={{
+                  width: 220,
+                  height: 220,
+                  borderRadius: 110,
+                  backgroundColor: colors.accentLight,
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  marginBottom: 24,
+                }}
+              >
+                <Text style={{ color: colors.textSecondary }}>No photo taken yet</Text>
+              </View>
+            )}
+            <TouchableOpacity
+              onPress={pickImage}
+              style={{
+                backgroundColor: colors.primary,
+                paddingVertical: 14,
+                paddingHorizontal: 40,
+                borderRadius: 30,
+                marginBottom: 16,
+              }}
+            >
+              <Text style={{ color: 'white', fontWeight: '700', fontSize: 18 }}>Take Photo</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={handleNext}
+              style={{
+                backgroundColor: colors.primary,
+                paddingVertical: 14,
+                paddingHorizontal: 40,
+                borderRadius: 30,
+                marginBottom: 12,
+              }}
+              activeOpacity={0.85}
+            >
+              <Text style={{ color: 'white', fontWeight: '700', fontSize: 18 }}>Continue</Text>
+            </TouchableOpacity>
+
+            
+            {!committed && (
+  <TouchableOpacity
+    onPress={() => confirmSkip('Photo')}
+    style={{
+      paddingVertical: 14,
+      paddingHorizontal: 40,
+      borderRadius: 30,
+      borderWidth: 1,
+      borderColor: colors.primary,
+      alignItems: 'center',
+    }}
+  >
+    <Text style={{ color: colors.primary, fontWeight: '700', fontSize: 18 }}>Skip</Text>
+  </TouchableOpacity>
+)}
+
+          </View>
+        )}
+
+        {/* New Signature Step */}
+        {currentStep.type === 'signature' && (
+          <View style={{ flex: 1 }}>
+            <View
+              style={{ height: 320, borderWidth: 1, borderColor: colors.border, borderRadius: 20, overflow: 'hidden' }}
+            >
+              <SignatureCanvas
+  ref={signatureRef}
+  onOK={handleSignature}
+  onEnd={() => signatureRef.current?.readSignature()}
+  webStyle={`.m-signature-pad--footer {display: none; margin: 0;}`}
+  descriptionText="Sign above"
+/>
+
+            </View>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 16 }}>
+              <TouchableOpacity
+                onPress={clearSignature}
+                style={{
+                  paddingVertical: 12,
+                  paddingHorizontal: 30,
+                  backgroundColor: colors.accentLight,
+                  borderRadius: 20,
+                  alignItems: 'center',
+                }}
+              >
+                <Text style={{ color: colors.textSecondary, fontWeight: '600' }}>Clear</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={handleNext}
+                style={{
+                  paddingVertical: 12,
+                  paddingHorizontal: 30,
+                  backgroundColor: colors.primary,
+                  borderRadius: 20,
+                  alignItems: 'center',
+                }}
+              >
+                <Text style={{ color: 'white', fontWeight: '700' }}>Continue</Text>
+              </TouchableOpacity>
+            </View>
+
+            
+            {!committed && (
+  <TouchableOpacity
+    onPress={() => confirmSkip('Signature')}
+    style={{
+      paddingVertical: 14,
+      paddingHorizontal: 40,
+      borderRadius: 30,
+      borderWidth: 1,
+      borderColor: colors.primary,
+      alignItems: 'center',
+      alignSelf: 'center',
+      marginTop: 4,
+    }}
+  >
+    <Text style={{ color: colors.primary, fontWeight: '700', fontSize: 18 }}>Skip</Text>
+  </TouchableOpacity>
+)}
+
+          </View>
+        )}
+
+        {/* New Personal Message Step */}
+        {currentStep.type === 'message' && (
+          <View>
+            <TextInput
+              placeholder="Why do you want to change?"
+              multiline
+              numberOfLines={4}
+              value={message}
+              onChangeText={setMessage}
+              style={{
+                borderWidth: 1,
+                borderColor: colors.border,
+                borderRadius: 20,
+                padding: 16,
+                fontSize: 16,
+                color: colors.textMain,
+                backgroundColor: 'white',
+                textAlignVertical: 'top',
+                marginBottom: 24,
+              }}
+            />
+            <TouchableOpacity
+              onPress={handleNext}
+              style={{ backgroundColor: colors.primary, paddingVertical: 16, borderRadius: 30, alignItems: 'center' }}
+              activeOpacity={0.85}
+            >
+              <Text style={{ color: 'white', fontWeight: '700', fontSize: 18 }}>Finish</Text>
+            </TouchableOpacity>
+
+            <Text
+              style={{
+                color: colors.textSecondary,
+                fontStyle: 'italic',
+                marginTop: 16,
+                marginBottom: 12,
+                textAlign: 'center',
+              }}
+            >
+              Writing a personal message helps solidifies your commitment.
+            </Text>
+            {!committed && (
+  <TouchableOpacity
+    onPress={() => confirmSkip('Personal Message')}
+    style={{
+      paddingVertical: 14,
+      paddingHorizontal: 40,
+      borderRadius: 30,
+      borderWidth: 1,
+      borderColor: colors.primary,
+      alignItems: 'center',
+      alignSelf: 'center',
+      marginTop: 4,
+    }}
+  >
+    <Text style={{ color: colors.primary, fontWeight: '700', fontSize: 18 }}>Skip</Text>
+  </TouchableOpacity>
+)}
+
+          </View>
+        )}
+
+        {/* Progress Dots */}
+        <View
+          style={{
+            flexDirection: 'row',
+            justifyContent: 'center',
+            marginTop: 32,
+            gap: 8,
+          }}
+        >
+          {steps.map((_, i) => (
+            <View
+              key={i}
+              style={{
+                width: 12,
+                height: 12,
+                borderRadius: 6,
+                backgroundColor: i === stepIndex ? colors.primary : colors.border,
+                marginHorizontal: 4,
+              }}
+            />
+          ))}
+        </View>
+      </ScrollView>
     </KeyboardAvoidingView>
   );
 }
