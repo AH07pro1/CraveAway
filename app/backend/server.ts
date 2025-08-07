@@ -8,7 +8,7 @@ import cravingRoutes from './cravings/routes/cravingRoutes';
 import cravingTypeRoutes from './craving-types/routes/cravingTypesRoutes';
 import sessionRoute from './session/routes/sessionroute';
 import dailyCheckinRoute from './daily-checkin/routes/dailyCheckinRoute';
-
+import onboardingRoute from './onboarding/routes/onboardingRoutes';
 const app: Application = express();
 const PORT = process.env.PORT || 3000;
 
@@ -20,6 +20,7 @@ app.use('/api/craving', cravingRoutes);
 app.use('/api/craving-types', cravingTypeRoutes);
 app.use('/api/session-complete', sessionRoute);
 app.use('/api/daily-checkin', dailyCheckinRoute);
+app.use('/api/onboarding', onboardingRoute);
 
 // Server start
 app.listen(3000, '0.0.0.0', () => {

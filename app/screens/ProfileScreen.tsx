@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, Image, Alert, TouchableOpacity, ScrollView } from 'react-native';
 import { useUser, useClerk } from '@clerk/clerk-expo';
 import { format } from 'date-fns';
@@ -7,11 +7,44 @@ import { CommonActions, useNavigation } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAppState } from '../context/AppStateContext';
 
+const API_URL = "https://api.twins4soft.com";  // your API base URL
+
 export default function ProfileScreen() {
   const { user, isLoaded } = useUser();
   const { signOut } = useClerk();
   const navigation = useNavigation<any>();
-const { setIsSignedIn, setHasPaid } = useAppState();
+  const { setIsSignedIn, setHasPaid } = useAppState();
+
+  // State to hold backend onboarding info
+  const [onboardingPhotoUrl, setOnboardingPhotoUrl] = useState<string | null>(null);
+  const [onboardingMessage, setOnboardingMessage] = useState<string | null>(null);
+  const [loadingOnboarding, setLoadingOnboarding] = useState(true);
+
+  useEffect(() => {
+    if (!user?.id) return;
+
+    // Fetch onboarding data from backend
+    async function fetchOnboarding() {
+      try {
+        if (!user) return;
+        const response = await fetch(`${API_URL}/api/onboarding/${user.id}`);
+        if (response.ok) {
+          const json = await response.json();
+          if (json.success && json.data) {
+            setOnboardingPhotoUrl(json.data.photoUrl || null);
+            setOnboardingMessage(json.data.message || null);
+          }
+        }
+      } catch (error) {
+        console.error("Failed to fetch onboarding data:", error);
+      } finally {
+        setLoadingOnboarding(false);
+      }
+    }
+
+    fetchOnboarding();
+  }, [user?.id]);
+
   if (!isLoaded) {
     return (
       <View className="flex-1 justify-center items-center" style={{ backgroundColor: colors.background }}>
@@ -28,29 +61,28 @@ const { setIsSignedIn, setHasPaid } = useAppState();
     );
   }
 
-  const profileImageUrl = user.imageUrl;
   const createdDate = user.createdAt ? format(new Date(user.createdAt), 'PPP') : 'N/A';
   const lastSignInDate = user.lastSignInAt ? format(new Date(user.lastSignInAt), 'PPP p') : 'N/A';
 
- const handleSignOut = () => {
-  Alert.alert('Confirm Sign Out', 'Are you sure you want to sign out?', [
-    { text: 'Cancel', style: 'cancel' },
-    {
-      text: 'Sign Out',
-      style: 'destructive',
-      onPress: async () => {
-        try {
-          await signOut(); // Clerk sign-out
-          await AsyncStorage.setItem('hasOnboarded', 'true'); // So we skip onboarding next time
-          setIsSignedIn(false); // 🔥 This triggers Navigator rerender
-          setHasPaid(false);    // Optional: show Paywall again
-        } catch (err) {
-          console.error("Error signing out", err);
-        }
+  const handleSignOut = () => {
+    Alert.alert('Confirm Sign Out', 'Are you sure you want to sign out?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Sign Out',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await signOut(); // Clerk sign-out
+            await AsyncStorage.setItem('hasOnboarded', 'true'); // skip onboarding next time
+            setIsSignedIn(false); // trigger Navigator rerender
+            setHasPaid(false);    // Optional: show Paywall again
+          } catch (err) {
+            console.error("Error signing out", err);
+          }
+        },
       },
-    },
-  ]);
-};
+    ]);
+  };
 
   const handleDeleteAccount = () => {
     Alert.alert(
@@ -75,22 +107,24 @@ const { setIsSignedIn, setHasPaid } = useAppState();
     );
   };
 
+  // Use backend photo if present, otherwise fallback to Clerk photo or initial
+  const profileImageUrl = onboardingPhotoUrl || user.imageUrl;
+
   return (
     <ScrollView style={{ flex: 1, backgroundColor: colors.background }} contentContainerStyle={{ padding: 24 }}>
       {/* Header */}
       <Text
-  style={{
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: colors.primary,
-    textAlign: 'center',
-    marginTop: 40, // <- Added spacing from top
-    marginBottom: 24,
-  }}
->
-  Your Profile
-</Text>
-
+        style={{
+          fontSize: 28,
+          fontWeight: 'bold',
+          color: colors.primary,
+          textAlign: 'center',
+          marginTop: 40,
+          marginBottom: 24,
+        }}
+      >
+        Your Profile
+      </Text>
 
       {/* Profile card */}
       <View
@@ -132,6 +166,13 @@ const { setIsSignedIn, setHasPaid } = useAppState();
           </View>
         )}
 
+        {/* Show onboarding message if present */}
+        {onboardingMessage ? (
+          <Text style={{ fontSize: 16, color: colors.textSecondary, fontStyle: 'italic', marginBottom: 12, textAlign: 'center' }}>
+            {onboardingMessage}
+          </Text>
+        ) : null}
+
         <Text style={{ fontSize: 22, fontWeight: '800', color: colors.textMain }}>
           {user.fullName || user.firstName || 'User'}
         </Text>
@@ -153,8 +194,7 @@ const { setIsSignedIn, setHasPaid } = useAppState();
           { label: 'Username', value: user.username || user.id || 'N/A' },
           {
             label: 'Email Verified',
-            value:
-              user.primaryEmailAddress?.verification?.status === 'verified' ? 'Yes ✅' : 'No ❌',
+            value: user.primaryEmailAddress?.verification?.status === 'verified' ? 'Yes ✅' : 'No ❌',
           },
           {
             label: 'Phone Number',

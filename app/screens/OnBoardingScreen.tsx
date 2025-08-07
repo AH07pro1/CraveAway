@@ -15,6 +15,8 @@ import SignatureCanvas from 'react-native-signature-canvas';
 import colors from '../utils/colors';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAppState } from '../context/AppStateContext';
+import { API_URL } from '../config';
+import { useUser } from '@clerk/clerk-expo';
 
 const steps = [
   { type: 'intro', title: 'Welcome to CraveAway', description: 'Let’s help you take control of your cravings.' },
@@ -56,7 +58,7 @@ export default function OnboardingScreen({ navigation }: any) {
   const [signature, setSignature] = useState<string | null>(null);
   const [message, setMessage] = useState('');
 const [committed, setCommitted] = useState(false);
-
+const { user } = useUser();
   const signatureRef = useRef<any>(null);
 
   const currentStep = steps[stepIndex];
@@ -141,6 +143,32 @@ const pickImage = async () => {
   }
 };
 
+const saveOnboardingData = async () => {
+  try {
+    if (!user) throw new Error('User not logged in');
+
+    const response = await fetch(`${API_URL}/api/onboarding`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId: user.id,
+        photoUrl: photoUri,
+        message,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Failed to save onboarding data');
+    }
+
+    console.log('Onboarding data saved successfully');
+  } catch (err) {
+    console.warn('Failed to save onboarding info', err);
+  }
+};
+
+
 
 
   // Signature done callback
@@ -172,6 +200,7 @@ const pickImage = async () => {
     }
 if (currentStep.type === 'message') {
   try {
+    await saveOnboardingData(); // Save to backend DB
     await AsyncStorage.setItem('hasOnboarded', 'true');
     setHasOnboarded(true);
     Alert.alert('Thank you for committing!');
@@ -179,7 +208,9 @@ if (currentStep.type === 'message') {
   } catch (error) {
     console.warn('Failed to save onboarding flag', error);
   }
+  return;
 }
+
 if (stepIndex >= steps.length - 1) {
   try {
     await AsyncStorage.setItem('hasOnboarded', 'true');
