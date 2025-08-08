@@ -9,7 +9,12 @@ const onboardingSchema = z.object({
   photoUrl: z.string().url().optional(),
   message: z.string().optional(),
 });
-router.get('/test', (req, res) => res.json({ message: 'onboarding route works' }));
+
+router.post('/test', (req, res) => {
+  console.log('POST /api/onboarding/test hit');
+  res.json({ message: 'POST test route works!' });
+});
+
 
 
 // POST /api/user/onboarding
@@ -23,10 +28,20 @@ router.post('/', async (req: Request, res: Response) => {
 
   try {
     await prisma.userProgress.upsert({
-      where: { userId },
-      update: { photoUrl, message, committed: true },
-      create: { userId, photoUrl, message, committed: true },
-    });
+  where: { userId },
+  update: {
+    committed: true,
+    ...(photoUrl !== undefined ? { photoUrl } : {}),
+    ...(message !== undefined ? { message } : {}),
+  },
+  create: {
+    userId,
+    committed: true,
+    ...(photoUrl !== undefined ? { photoUrl } : {}),
+    ...(message !== undefined ? { message } : {}),
+  },
+});
+
 
     res.status(200).json({ success: true });
   } catch (error) {
