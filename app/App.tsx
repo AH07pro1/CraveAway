@@ -15,6 +15,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import RootNavigator from './navigation/Navigation';
 import InitialNavigator from './navigation/InitialNavigator';
 import { AppStateProvider, useAppState } from './context/AppStateContext';
+import { OnboardingProvider } from './context/OnBoardingContext';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import OnboardingScreen from './screens/OnBoardingScreen';
 import PaywallScreen from './screens/PaywallScreen';
@@ -79,11 +80,13 @@ export default function App() {
       tokenCache={tokenCache}
       proxyUrl="https://CraveAway.expo.dev"
     >
+      <OnboardingProvider>
       <AppStateProvider>
         <GestureHandlerRootView style={{ flex: 1 }}>
           <NavigatorWrapper />
         </GestureHandlerRootView>
       </AppStateProvider>
+      </OnboardingProvider>
     </ClerkProvider>
   );
 }

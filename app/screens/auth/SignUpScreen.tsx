@@ -1,19 +1,24 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity } from 'react-native';
-import { useSignUp } from '@clerk/clerk-expo';
+import { useSignUp, useUser } from '@clerk/clerk-expo';
 import { useNavigation } from '@react-navigation/native';
 import colors from '../../utils/colors';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { API_URL } from '../../config';
+import { useOnboarding } from '../../context/OnBoardingContext';
 
 export default function SignUpScreen() {
   const { isLoaded, signUp, setActive } = useSignUp();
   const navigation = useNavigation<any>();
+  const { user, isLoaded: userLoaded } = useUser();
+  const { onboardingData } = useOnboarding();
 
   const [emailAddress, setEmailAddress] = React.useState('');
   const [password, setPassword] = React.useState('');
   const [pendingVerification, setPendingVerification] = React.useState(false);
   const [code, setCode] = React.useState('');
   const [error, setError] = React.useState<string | null>(null);
+  const [justVerified, setJustVerified] = React.useState(false);
 
   const onSignUpPress = async () => {
     if (!isLoaded) return;
@@ -32,28 +37,63 @@ export default function SignUpScreen() {
     }
   };
 
- const onVerifyPress = async () => {
-  if (!isLoaded) return;
-  setError(null);
+  const onVerifyPress = async () => {
+    if (!isLoaded) return;
+    setError(null);
 
-  try {
-    const signUpAttempt = await signUp.attemptEmailAddressVerification({ code });
+    try {
+      const signUpAttempt = await signUp.attemptEmailAddressVerification({ code });
 
-    if (signUpAttempt.status === 'complete') {
-      await setActive({ session: signUpAttempt.createdSessionId });
-
-      const hasPaid = await AsyncStorage.getItem('hasPaid');
-     navigation.reset({
-  index: 0,
-  routes: [{ name: hasPaid === 'true' ? 'Tabs' : 'Paywall' }],
-});
-    } else {
-      setError('Verification incomplete. Please try again.');
+      if (signUpAttempt.status === 'complete') {
+        await setActive({ session: signUpAttempt.createdSessionId });
+        setPendingVerification(false);
+        setJustVerified(true); // Flag to post after user loads
+      } else {
+        setError('Verification incomplete. Please try again.');
+      }
+    } catch (err: any) {
+      setError(err?.errors?.[0]?.message || 'Verification failed.');
     }
-  } catch (err: any) {
-    setError(err?.errors?.[0]?.message || 'Verification failed.');
+  };
+
+  useEffect(() => {
+  let interval: any;
+
+  if (justVerified) {
+    interval = setInterval(() => {
+      if (userLoaded && user) {
+        clearInterval(interval);
+        (async () => {
+          try {
+            console.log('Posting onboarding data after sign-up...');
+            await fetch(`${API_URL}/api/onboarding`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                userId: user.id,
+                photoUrl: onboardingData.photoUrl,
+                message: onboardingData.message,
+              }),
+            });
+            console.log('Posted onboarding data after sign-up');
+
+            const hasPaid = await AsyncStorage.getItem('hasPaid');
+            navigation.reset({
+              index: 0,
+              routes: [{ name: hasPaid === 'true' ? 'Tabs' : 'Paywall' }],
+            });
+          } catch (err) {
+            console.warn('Failed to post onboarding data after sign-up', err);
+          } finally {
+            setJustVerified(false);
+          }
+        })();
+      }
+    }, 200);
   }
-};
+
+  return () => clearInterval(interval);
+}, [justVerified, userLoaded, user]);
 
 
   if (pendingVerification) {
@@ -81,9 +121,7 @@ export default function SignUpScreen() {
           }}
         />
 
-        {error && (
-          <Text style={{ color: colors.error, textAlign: 'center', marginBottom: 16 }}>{error}</Text>
-        )}
+        {error && <Text style={{ color: colors.error, textAlign: 'center', marginBottom: 16 }}>{error}</Text>}
 
         <TouchableOpacity
           onPress={onVerifyPress}
@@ -100,9 +138,7 @@ export default function SignUpScreen() {
           }}
           activeOpacity={0.85}
         >
-          <Text style={{ color: 'white', textAlign: 'center', fontSize: 18, fontWeight: '600' }}>
-            Verify
-          </Text>
+          <Text style={{ color: 'white', textAlign: 'center', fontSize: 18, fontWeight: '600' }}>Verify</Text>
         </TouchableOpacity>
       </View>
     );
@@ -149,9 +185,7 @@ export default function SignUpScreen() {
         }}
       />
 
-      {error && (
-        <Text style={{ color: colors.error, textAlign: 'center', marginBottom: 16 }}>{error}</Text>
-      )}
+      {error && <Text style={{ color: colors.error, textAlign: 'center', marginBottom: 16 }}>{error}</Text>}
 
       <TouchableOpacity
         onPress={onSignUpPress}
@@ -168,9 +202,7 @@ export default function SignUpScreen() {
         }}
         activeOpacity={0.85}
       >
-        <Text style={{ color: 'white', textAlign: 'center', fontSize: 18, fontWeight: '600' }}>
-          Continue
-        </Text>
+        <Text style={{ color: 'white', textAlign: 'center', fontSize: 18, fontWeight: '600' }}>Continue</Text>
       </TouchableOpacity>
 
       <View style={{ flexDirection: 'row', justifyContent: 'center' }}>

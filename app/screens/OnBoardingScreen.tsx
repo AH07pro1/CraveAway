@@ -17,6 +17,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAppState } from '../context/AppStateContext';
 import { API_URL } from '../config';
 import { useUser } from '@clerk/clerk-expo';
+import { useOnboarding } from '../context/OnBoardingContext';
 
 const steps = [
   { type: 'intro', title: 'Welcome to CraveAway', description: 'Let’s help you take control of your cravings.' },
@@ -60,6 +61,7 @@ export default function OnboardingScreen({ navigation }: any) {
 const [committed, setCommitted] = useState(false);
 const { user } = useUser();
   const signatureRef = useRef<any>(null);
+const { onboardingData, setOnboardingData } = useOnboarding();
 
   const currentStep = steps[stepIndex];
 
@@ -143,31 +145,20 @@ const pickImage = async () => {
   }
 };
 
-const saveOnboardingData = async () => {
+const saveOnboardingData = () => {
+  console.log('Saving onboarding data to context:', { photoUri, message });
   try {
-    if (!user) throw new Error('User not logged in');
 
-    const response = await fetch(`${API_URL}/api/onboarding`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        userId: user.id,
-        photoUrl: photoUri,
-        message,
-      }),
+    setOnboardingData({
+      photoUrl: photoUri ?? '',
+      message,
     });
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'Failed to save onboarding data');
-    }
-
-    console.log('Onboarding data saved successfully');
+    console.log('Onboarding data saved to context');
   } catch (err) {
-    console.warn('Failed to save onboarding info', err);
+    console.warn('Failed to save onboarding info to context', err);
   }
 };
-
 
 
 
@@ -200,7 +191,7 @@ const saveOnboardingData = async () => {
     }
 if (currentStep.type === 'message') {
   try {
-    await saveOnboardingData(); // Save to backend DB
+    await saveOnboardingData(); 
     await AsyncStorage.setItem('hasOnboarded', 'true');
     setHasOnboarded(true);
     Alert.alert('Thank you for committing!');
