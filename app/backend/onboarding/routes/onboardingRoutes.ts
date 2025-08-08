@@ -1,7 +1,7 @@
 import express, { Request, Response } from 'express';
 import prisma from '../../lib/prisma';
 import { z } from 'zod';
-
+console.log("Onboarding routes loaded")
 const router = express.Router();
 
 const onboardingSchema = z.object({
