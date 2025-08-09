@@ -25,6 +25,8 @@ router.post('/', async (req: Request, res: Response) => {
   const { userId, photoUrl, message } = result.data;
 
   try {
+    console.log('Prisma UserProgress fields:', Object.keys(prisma.userProgress));
+
     await prisma.userProgress.upsert({
       where: { userId },
       update: {
