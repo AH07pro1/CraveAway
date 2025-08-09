@@ -15,9 +15,9 @@ router.post('/test', (req, res) => {
 });
 // POST /api/user/onboarding
 router.post('/', async (req: Request, res: Response) => {
-   console.log('POST body received:', req.body);
+  console.log('POST body received:', req.body);
   const result = onboardingSchema.safeParse(req.body);
-  
+
   if (!result.success) {
     return res.status(400).json({ errors: result.error.format() });
   }
@@ -42,15 +42,15 @@ router.post('/', async (req: Request, res: Response) => {
 
     res.status(200).json({ success: true });
   } catch (error) {
-  console.error('Failed to save onboarding data:', error);
-  res.status(500).json({
-    error: 'Failed to save onboarding data',
-    details: error instanceof Error ? error.message : JSON.stringify(error),
-  });
-}
+    console.error('Failed to save onboarding data:', error);
+    res.status(500).json({
+      error: 'Failed to save onboarding data',
+      details: error instanceof Error ? error.message : JSON.stringify(error),
+      fullError: error, // add this line to see the full error object in response
+    });
+  }
+});
 
-}
-);
 
 // GET /api/user/onboarding?userId=xxx
 router.get('/', async (req, res) => {
