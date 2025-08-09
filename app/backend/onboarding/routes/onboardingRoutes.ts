@@ -9,7 +9,10 @@ const onboardingSchema = z.object({
   photoUrl: z.string().url().optional(),
   message: z.string().optional(),
 });
-
+router.post('/test', (req, res) => {
+  console.log('POST /api/onboarding/test hit');
+  res.json({ message: 'POST test route works!' });
+});
 // POST /api/user/onboarding
 router.post('/', async (req: Request, res: Response) => {
   const result = onboardingSchema.safeParse(req.body);
@@ -37,9 +40,13 @@ router.post('/', async (req: Request, res: Response) => {
 
     res.status(200).json({ success: true });
   } catch (error) {
-    console.error('Failed to save onboarding data', error);
-    res.status(500).json({ error: 'Failed to save onboarding data' });
-  }
+  console.error('Failed to save onboarding data:', error);
+  res.status(500).json({
+    error: 'Failed to save onboarding data',
+    details: error instanceof Error ? error.message : JSON.stringify(error),
+  });
+}
+
 });
 
 // GET /api/user/onboarding?userId=xxx

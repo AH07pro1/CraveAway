@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
   output   = "../app/generated/prisma"
@@ -15,25 +9,26 @@ datasource db {
 }
 
 model CravingType {
-  id     Int     @id @default(autoincrement())
-  name   String  @unique
-  events CravingEvent[]
-  isCustom Boolean @default(false) // true = user-defined, false = built-in
+  id       Int            @id @default(autoincrement())
+  name     String         @unique
+  isCustom Boolean        @default(false)
   userId   String?
-   @@index([userId])
-  @@unique([name, userId])  
+  events   CravingEvent[]
+
+  @@unique([name, userId])
+  @@index([userId])
 }
 
 model CravingEvent {
-  id        Int       @id @default(autoincrement())
-  createdAt DateTime  @default(now())
-  intensity Int?
-  notes     String?
-  resolved  Boolean
-  typeId    Int?       
-  type      CravingType? @relation(fields: [typeId], references: [id])
-  userId    String     // Clerk user ID to link cravings to users
+  id         Int          @id @default(autoincrement())
+  createdAt  DateTime     @default(now())
+  intensity  Int?
+  notes      String?
+  resolved   Boolean
+  typeId     Int?
+  userId     String
   resolvedAt DateTime?
+  type       CravingType? @relation(fields: [typeId], references: [id])
 }
 
 model UserProgress {
@@ -41,60 +36,15 @@ model UserProgress {
   userId    String  @unique
   xp        Int     @default(0)
   level     Int     @default(1)
-  
-  message   String?       // user commitment message
-  photoUrl  String?       // uploaded photo URL
-  committed Boolean @default(false) // true if they completed onboarding
+  committed Boolean @default(false)
+  message   String?
+  photoUrl  String?
 }
 
 model UserDailyCheckin {
-  id        Int      @id @default(autoincrement())
-  userId    String
-  date      DateTime
+  id     Int      @id @default(autoincrement())
+  userId String
+  date   DateTime
+
   @@unique([userId, date])
 }
-
-// // -------------------------------------------
-// model Achievement {
-//   id          Int     @id @default(autoincrement())
-//   title       String   @unique 
-//   description String
-//   type        AchievementType
-//   value       Int     // XP target, number of cravings, etc.
-//   xpReward    Int     @default(0)
-//   badge       Badge?  @relation(fields: [badgeId], references: [id])
-//   badgeId     Int?
-//   userAchievements UserAchievement[] // Relation to UserAchievement
-// }
-
-// model Badge {
-//   id          Int    @id @default(autoincrement())
-//   title       String
-//   description String
-//   icon        String // URL or file name
-//   achievements Achievement[] // Relation to Achievement
-// }
-
-// model UserAchievement {
-//   id             Int     @id @default(autoincrement())
-//   userId         String
-//   achievementId  Int
-//   achievedAt     DateTime @default(now())
-//   achievement    Achievement @relation(fields: [achievementId], references: [id])
-
-//   @@unique([userId, achievementId])
-// }
-
-// enum AchievementType {
-//   XP
-//   CRAVING
-//   RESOLVED_CRAVING
-//   FAST_RESOLUTION
-//   STREAK
-//   RESISTED_CRAVING
-//   JOURNAL
-//   FEEDBACK
-//   DAYS_ACTIVE
-//   NO_CRAVINGS_DAY
-//   DAILY_RESOLVED_CRAVINGS
-// }
