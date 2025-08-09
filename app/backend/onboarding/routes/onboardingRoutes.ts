@@ -15,7 +15,9 @@ router.post('/test', (req, res) => {
 });
 // POST /api/user/onboarding
 router.post('/', async (req: Request, res: Response) => {
+   console.log('POST body received:', req.body);
   const result = onboardingSchema.safeParse(req.body);
+  
   if (!result.success) {
     return res.status(400).json({ errors: result.error.format() });
   }
@@ -45,6 +47,8 @@ router.post('/', async (req: Request, res: Response) => {
     error: 'Failed to save onboarding data',
     details: error instanceof Error ? error.message : JSON.stringify(error),
   });
+}
+
 }
 
 });

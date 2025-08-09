@@ -356,7 +356,7 @@ navigation.replace("SessionComplete", { timeSpent });
   style={{ backgroundColor: colors.primary }}
 >
   <Text className="text-white font-semibold">
-    Breathing: {breathingType}
+    Mode: {breathingType} 🔄
   </Text>
 </Pressable>
 

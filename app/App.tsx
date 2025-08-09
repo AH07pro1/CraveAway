@@ -81,12 +81,14 @@ export default function App() {
       proxyUrl="https://CraveAway.expo.dev"
     >
       <OnboardingProvider>
-      <AppStateProvider>
+    <AppStateProvider>
+      <VoiceProvider>
         <GestureHandlerRootView style={{ flex: 1 }}>
           <NavigatorWrapper />
         </GestureHandlerRootView>
-      </AppStateProvider>
-      </OnboardingProvider>
+      </VoiceProvider>
+    </AppStateProvider>
+  </OnboardingProvider>
     </ClerkProvider>
   );
 }
