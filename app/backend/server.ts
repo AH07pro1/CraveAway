@@ -15,6 +15,12 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
+app.use((req, res, next) => {
+  console.log(`[${req.method}] ${req.url} received`);
+  next();
+});
+
+
 // Route registrations
 app.use('/api/craving', cravingRoutes);
 app.use('/api/craving-types', cravingTypeRoutes);

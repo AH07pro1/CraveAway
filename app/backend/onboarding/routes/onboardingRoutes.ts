@@ -50,8 +50,7 @@ router.post('/', async (req: Request, res: Response) => {
 }
 
 }
-
-});
+);
 
 // GET /api/user/onboarding?userId=xxx
 router.get('/', async (req, res) => {
