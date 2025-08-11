@@ -3,6 +3,7 @@ import { PrismaClient } from '@prisma/client'; // i made the backend server run 
 const prisma = new PrismaClient();
 
 
+
 console.log('🚀 Starting test...');
 
 async function testConnection() {
@@ -19,5 +20,7 @@ async function testConnection() {
 testConnection();
 
 export default prisma;
+
+
 
 
