@@ -25,30 +25,32 @@ router.post('/', async (req: Request, res: Response) => {
   const { userId, photoUrl, message } = result.data;
 
   try {
+    console.log('Prisma UserProgress fields:', Object.keys(prisma.userProgress));
+
     await prisma.userProgress.upsert({
       where: { userId },
       update: {
-        committed: true,
-        ...(photoUrl !== undefined ? { photoUrl } : {}),
-        ...(message !== undefined ? { message } : {}),
-      },
-      create: {
-        userId,
-        committed: true,
-        ...(photoUrl !== undefined ? { photoUrl } : {}),
-        ...(message !== undefined ? { message } : {}),
-      },
+  ...(photoUrl !== undefined ? { photoUrl } : {}),
+  ...(message !== undefined ? { message } : {}),
+},
+create: {
+  userId,
+  ...(photoUrl !== undefined ? { photoUrl } : {}),
+  ...(message !== undefined ? { message } : {}),
+},
+
     });
 
     res.status(200).json({ success: true });
-  } catch (error) {
-    console.error('Failed to save onboarding data:', error);
-    res.status(500).json({
-      error: 'Failed to save onboarding data',
-      details: error instanceof Error ? error.message : JSON.stringify(error),
-      fullError: error, // add this line to see the full error object in response
-    });
-  }
+  }  catch (error) {
+  console.error('Failed to save onboarding data:', error);
+  res.status(500).json({
+    error: 'Failed to save onboarding data',
+    details: error instanceof Error ? error.message : JSON.stringify(error),
+    stack: error instanceof Error ? error.stack : undefined
+  });
+}
+
 });
 
 
