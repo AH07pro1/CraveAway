@@ -43,14 +43,15 @@ router.post('/', async (req: Request, res: Response) => {
     });
 
     res.status(200).json({ success: true });
-  } catch (error) {
-    console.error('Failed to save onboarding data:', error);
-    res.status(500).json({
-      error: 'Failed to save onboarding data',
-      details: error instanceof Error ? error.message : JSON.stringify(error),
-      fullError: error, // add this line to see the full error object in response
-    });
-  }
+  }  catch (error) {
+  console.error('Failed to save onboarding data:', error);
+  res.status(500).json({
+    error: 'Failed to save onboarding data',
+    details: error instanceof Error ? error.message : JSON.stringify(error),
+    stack: error instanceof Error ? error.stack : undefined
+  });
+}
+
 });
 
 
