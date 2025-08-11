@@ -23,7 +23,4 @@ export default prisma;
 
 
 
-console.log('Stating test...');
-
-export default prisma;
 
