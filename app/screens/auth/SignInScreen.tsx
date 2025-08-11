@@ -45,48 +45,58 @@ const onSignInPress = async () => {
 };
 
   useEffect(() => {
-    console.log('useEffect triggered with:', { justSignedIn, userLoaded, user });
+    console.log("chat we are in the use effect")
+  if (!justSignedIn) return;
+  if (!userLoaded || !user) return;
 
-    if (!justSignedIn) {
-      console.log('Exiting effect early because justSignedIn is false');
-      return;
-    }
-
-    if (!userLoaded || !user) {
-      console.log('Waiting for user to load...');
-      return;
-    }
-
-    (async () => {
-      try {
-        console.log('Posting onboarding data after sign-in!!!');
-        await fetch(`${API_URL}/api/onboarding`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            userId: user.id,
-            photoUrl: onboardingData.photoUrl || null, // check photoUri property from context
-            message: onboardingData.message,
-          }),
-        });
-        console.log('Posted onboarding data after sign-in');
-
-        const hasPaid = await AsyncStorage.getItem('hasPaid');
-        console.log('Retrieved hasPaid from AsyncStorage:', hasPaid);
-
-        navigation.reset({
-          index: 0,
-          routes: [{ name: hasPaid === 'true' ? 'Tabs' : 'Paywall' }],
-        });
-        console.log(`Navigated to ${hasPaid === 'true' ? 'Tabs' : 'Paywall'}`);
-      } catch (err) {
-        console.warn('Failed to post onboarding data after sign-in', err);
-      } finally {
-        setJustSignedIn(false);
-        console.log('Set justSignedIn to false');
+  (async () => {
+    try {
+      console.log('User just signed in:', user.id);
+      // Get onboarding data from AsyncStorage
+      const onboardingString = await AsyncStorage.getItem('pendingOnboarding');
+      let onboardingPayload = { photoUrl: null, message: null };
+console.log('Retrieved pendingOnboarding from AsyncStorage:', onboardingString);
+      if (onboardingString) {
+        const onboardingDataFromStorage = JSON.parse(onboardingString);
+        onboardingPayload.photoUrl = onboardingDataFromStorage.photoUri || null;
+        onboardingPayload.message = onboardingDataFromStorage.message || null;
       }
-    })();
-  }, [justSignedIn, userLoaded, user]);
+
+      console.log('Posting onboarding data after sign-in:', onboardingPayload);
+
+      await fetch(`${API_URL}/api/onboarding`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user.id,
+          photoUrl: onboardingPayload.photoUrl,
+          message: onboardingPayload.message,
+        }),
+      });
+
+      console.log('Posted onboarding data after sign-in');
+
+      // Clear onboarding data from AsyncStorage after posting (optional)
+      await AsyncStorage.removeItem('pendingOnboarding');
+
+      const hasPaid = await AsyncStorage.getItem('hasPaid');
+      console.log('Retrieved hasPaid from AsyncStorage:', hasPaid);
+
+      navigation.reset({
+        index: 0,
+        routes: [{ name: hasPaid === 'true' ? 'Tabs' : 'Paywall' }],
+      });
+
+      console.log(`Navigated to ${hasPaid === 'true' ? 'Tabs' : 'Paywall'}`);
+    } catch (err) {
+      console.warn('Failed to post onboarding data after sign-in', err);
+    } finally {
+      setJustSignedIn(false);
+      console.log('Set justSignedIn to false');
+    }
+  })();
+}, [justSignedIn, userLoaded, user]);
+
 
 
 

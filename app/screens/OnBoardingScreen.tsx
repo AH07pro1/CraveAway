@@ -145,20 +145,19 @@ const pickImage = async () => {
   }
 };
 
-const saveOnboardingData = () => {
-  console.log('Saving onboarding data to context:', { photoUri, message });
+const saveOnboardingData = async () => {
+  console.log('Saving onboarding data to AsyncStorage:', { photoUri, message });
   try {
-
-    setOnboardingData({
-      photoUrl: photoUri ?? '',
-      message,
-    });
-
-    console.log('Onboarding data saved to context');
+    await AsyncStorage.setItem(
+      'pendingOnboarding',
+      JSON.stringify({ photoUri, message })
+    );
+    console.log('Onboarding data saved to AsyncStorage');
   } catch (err) {
-    console.warn('Failed to save onboarding info to context', err);
+    console.warn('Failed to save onboarding data to AsyncStorage', err);
   }
 };
+
 
 
 
