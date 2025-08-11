@@ -30,16 +30,15 @@ router.post('/', async (req: Request, res: Response) => {
     await prisma.userProgress.upsert({
       where: { userId },
       update: {
-        committed: true,
-        ...(photoUrl !== undefined ? { photoUrl } : {}),
-        ...(message !== undefined ? { message } : {}),
-      },
-      create: {
-        userId,
-        committed: true,
-        ...(photoUrl !== undefined ? { photoUrl } : {}),
-        ...(message !== undefined ? { message } : {}),
-      },
+  ...(photoUrl !== undefined ? { photoUrl } : {}),
+  ...(message !== undefined ? { message } : {}),
+},
+create: {
+  userId,
+  ...(photoUrl !== undefined ? { photoUrl } : {}),
+  ...(message !== undefined ? { message } : {}),
+},
+
     });
 
     res.status(200).json({ success: true });
