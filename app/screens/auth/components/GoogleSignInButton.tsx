@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { TouchableOpacity, Text, Alert } from 'react-native';
 import { useOAuth, useSignIn, useUser } from '@clerk/clerk-expo';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -11,61 +11,64 @@ export default function GoogleSignInButton() {
   const { user, isLoaded: userLoaded } = useUser();
   const navigation = useNavigation<any>();
 
-  const handleGoogleSignIn = async () => {
-    try {
-      const { createdSessionId } = await startOAuthFlow();
+  const [signedIn, setSignedIn] = useState(false);
 
-      if (createdSessionId && setActive) {
-        await setActive({ session: createdSessionId });
-        console.log('✅ Signed in with Google!');
-        Alert.alert('Success', 'Signed in with Google!');
+  useEffect(() => {
+    async function postOnboardingAndNavigate() {
+      console.log('useEffect triggered with:', { signedIn, userLoaded, user });
 
-        // Wait for user info to be loaded and available
-        if (!userLoaded || !user) {
-          console.warn('User info not loaded yet, waiting...');
-          // Simple delay or you can refactor to wait properly
-          await new Promise((resolve) => setTimeout(resolve, 1000));
-          if (!user) {
-            console.error('User data still not available after waiting');
-            return;
-          }
-        }
+      if (!signedIn) {
+        console.log('Not signed in yet, returning');
+        return;
+      }
 
+      if (!userLoaded) {
+        console.log('User not loaded yet, returning');
+        return;
+      }
+
+      if (!user) {
+        console.log('User is null, waiting for user to load...');
+        return; // wait here until user is ready
+      }
+
+      // Small delay to ensure everything is ready
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      try {
         const userId = user.id;
-        console.log('Using userId:', userId);
+        console.log('User loaded with ID:', userId);
 
-        // Fetch onboarding data from AsyncStorage
         const onboardingString = await AsyncStorage.getItem('pendingOnboarding');
         console.log('pendingOnboarding:', onboardingString);
 
         if (onboardingString) {
           const onboardingPayload = JSON.parse(onboardingString);
 
-          // Prepare POST body, only add photoUrl if valid string
           const bodyPayload: any = {
-            userId: userId,
+            userId,
             message: onboardingPayload.message || null,
           };
           if (onboardingPayload.photoUri && onboardingPayload.photoUri.trim() !== '') {
             bodyPayload.photoUrl = onboardingPayload.photoUri;
           }
 
-          try {
-            const response = await fetch(`${API_URL}/api/onboarding`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(bodyPayload),
-            });
+          console.log('Posting onboarding data:', bodyPayload);
 
-            if (!response.ok) {
-              const text = await response.text();
-              console.warn('Onboarding post failed:', text);
-            } else {
-              console.log('Onboarding data posted successfully.');
-              Alert.alert('Onboarding', 'Data posted successfully.');
-            }
-          } catch (fetchErr) {
-            console.error('Fetch error:', fetchErr);
+          const response = await fetch(`${API_URL}/api/onboarding`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(bodyPayload),
+          });
+
+          if (!response.ok) {
+            const text = await response.text();
+            console.warn('Onboarding post failed:', text);
+            Alert.alert('Onboarding post failed', text);
+            return; // Stop here to avoid navigating before fixing
+          } else {
+            console.log('Onboarding data posted successfully.');
+            Alert.alert('Onboarding', 'Data posted successfully.');
           }
 
           await AsyncStorage.removeItem('pendingOnboarding');
@@ -74,16 +77,41 @@ export default function GoogleSignInButton() {
           console.log('No onboarding data to post.');
         }
 
-        // Check if user has paid
         const hasPaid = await AsyncStorage.getItem('hasPaid');
         console.log('hasPaid:', hasPaid);
 
-        // Navigate based on payment status
         navigation.reset({
           index: 0,
           routes: [{ name: hasPaid === 'true' ? 'Tabs' : 'Paywall' }],
         });
         console.log('Navigation done.');
+
+        setSignedIn(false);
+      } catch (err) {
+        console.error('Error during onboarding post and navigation:', err);
+        Alert.alert('Error', 'An unexpected error occurred.');
+      }
+    }
+
+    postOnboardingAndNavigate();
+  }, [signedIn, userLoaded, user]);
+
+  const handleGoogleSignIn = async () => {
+    try {
+      console.log('handleGoogleSignIn called');
+
+      const onboardStr = await AsyncStorage.getItem('pendingOnboarding');
+      console.log('Before Google sign-in, pendingOnboarding:', onboardStr);
+
+      const { createdSessionId } = await startOAuthFlow();
+      console.log('startOAuthFlow returned:', createdSessionId);
+
+      if (createdSessionId && setActive) {
+        await setActive({ session: createdSessionId });
+        console.log('✅ Signed in with Google!');
+        Alert.alert('Success', 'Signed in with Google!');
+
+        setSignedIn(true); // trigger effect to post onboarding & navigate
       }
     } catch (err) {
       console.error('Google sign-in failed:', err);

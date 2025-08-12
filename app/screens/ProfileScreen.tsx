@@ -110,7 +110,9 @@ console.log('Fetching onboarding data for user:', user.id);
   };
 
   // Use backend photo if present, otherwise fallback to Clerk photo or initial
-  const profileImageUrl = onboardingPhotoUrl || user.imageUrl;
+  // Use backend photo if valid, otherwise fallback to Clerk photo or initial
+const profileImageUrl = onboardingPhotoUrl && onboardingPhotoUrl.trim() !== '' ? onboardingPhotoUrl : user.imageUrl;
+console.log('Profile image URL:', profileImageUrl);
 
   return (
     <ScrollView style={{ flex: 1, backgroundColor: colors.background }} contentContainerStyle={{ padding: 24 }}>

@@ -62,7 +62,7 @@ export default function SignInScreen() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                  userId: signInAttempt.createdSessionId, // verify if backend expects this
+                  userId: user?.id ?? '', // verify if backend expects this
                   photoUrl: onboardingPayload.photoUri || null,
                   message: onboardingPayload.message || null,
                 }),
