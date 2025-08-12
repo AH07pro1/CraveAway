@@ -22,12 +22,14 @@ export default function ProfileScreen() {
 
   useEffect(() => {
     if (!user?.id) return;
+console.log('Fetching onboarding data for user:', user.id);
 
     // Fetch onboarding data from backend
     async function fetchOnboarding() {
       try {
         if (!user) return;
-        const response = await fetch(`${API_URL}/api/onboarding/${user.id}`);
+        const response = await fetch(`${API_URL}/api/onboarding?userId=${user.id}`);
+
         if (response.ok) {
           const json = await response.json();
           if (json.success && json.data) {
