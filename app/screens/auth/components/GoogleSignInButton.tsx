@@ -1,5 +1,5 @@
 import React from 'react';
-import { TouchableOpacity, Text, Alert } from 'react-native';
+import { TouchableOpacity, Text, Alert, Image } from 'react-native';
 import { useOAuth, useSignIn, useSession } from '@clerk/clerk-expo';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
@@ -11,7 +11,6 @@ export default function GoogleSignInButton() {
   const { session } = useSession();
   const navigation = useNavigation<any>();
 
-  // Helper to wait until session is loaded or timeout
   async function waitForSession(timeoutMs = 5000) {
     const start = Date.now();
     while (!session && Date.now() - start < timeoutMs) {
@@ -20,70 +19,80 @@ export default function GoogleSignInButton() {
     if (!session) throw new Error('Session not loaded after waiting');
   }
 
-  const handleGoogleSignIn = async () => {
-    try {
-      console.log('handleGoogleSignIn called');
+ const handleGoogleSignIn = async () => {
+  try {
+    const onboardStr = await AsyncStorage.getItem('pendingOnboarding');
 
-      const onboardStr = await AsyncStorage.getItem('pendingOnboarding');
-      console.log('Before Google sign-in, pendingOnboarding:', onboardStr);
+    const { createdSessionId } = await startOAuthFlow();
 
-      const { createdSessionId } = await startOAuthFlow();
-      console.log('startOAuthFlow returned:', createdSessionId);
+    if (createdSessionId && setActive) {
+      await setActive({ session: createdSessionId });
+      console.log('✅ Signed in with Google!');
 
-      if (createdSessionId && setActive) {
-        await setActive({ session: createdSessionId });
-        console.log('✅ Signed in with Google!');
+      // Use Clerk API to get userId from session if needed
+      // But easiest: store the sessionId and post onboarding on backend
+      if (onboardStr) {
+        const onboardingPayload = {
+          ...JSON.parse(onboardStr),
+          sessionId: createdSessionId, // send sessionId instead of userId
+        };
+        console.log('Posting onboarding data to backend...', onboardingPayload);
 
-        // Wait for the session to be ready before continuing
-        await waitForSession();
-
-        if (!session) throw new Error('Session is not available');
-        const clerkSessionToken = await session.getToken();
-        if (!clerkSessionToken) throw new Error('Could not get Clerk session token');
-
-        if (onboardStr) {
-          const onboardingPayload = JSON.parse(onboardStr);
-          console.log('Posting onboarding data to backend...');
-
-          const res = await fetch(`${API_URL}/api/onboarding`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${clerkSessionToken}`,
-            },
-            body: JSON.stringify(onboardingPayload),
-          });
-
-          if (!res.ok) {
-            const text = await res.text();
-            console.warn('Onboarding post failed:', text);
-            Alert.alert('Error', 'Failed to post onboarding data');
-          } else {
-            console.log('✅ Onboarding posted successfully');
-            await AsyncStorage.removeItem('pendingOnboarding');
-          }
-        } else {
-          console.log('No onboarding data to post');
-        }
-
-        const hasPaid = await AsyncStorage.getItem('hasPaid');
-        navigation.reset({
-          index: 0,
-          routes: [{ name: hasPaid === 'true' ? 'Tabs' : 'Paywall' }],
+        const res = await fetch(`${API_URL}/api/onboarding`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(onboardingPayload),
         });
+
+        if (!res.ok) {
+          const text = await res.text();
+          console.warn('Onboarding post failed:', text);
+          Alert.alert('Error', 'Failed to post onboarding data');
+        } else {
+          console.log('✅ Onboarding posted successfully');
+          await AsyncStorage.removeItem('pendingOnboarding');
+        }
       }
-    } catch (err) {
-      console.error('Google sign-in failed:', err);
-      Alert.alert('Error', 'Google sign-in failed');
+      
+      const hasPaid = await AsyncStorage.getItem('hasPaid');
+      navigation.reset({
+        index: 0,
+        routes: [{ name: hasPaid === 'true' ? 'Tabs' : 'Paywall' }],
+      });
     }
-  };
+  } catch (err) {
+    console.error('Google sign-in failed:', err);
+    Alert.alert('Error', 'Google sign-in failed');
+  }
+};
 
   return (
     <TouchableOpacity
-      onPress={handleGoogleSignIn}
-      style={{ backgroundColor: 'red', padding: 12, borderRadius: 8, marginTop: 20 }}
-    >
-      <Text style={{ color: 'white', textAlign: 'center' }}>Continue with Google</Text>
-    </TouchableOpacity>
+  onPress={handleGoogleSignIn}
+  style={{
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: '#DDDDDD',
+    marginTop: 20,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  }}
+>
+  <Image
+     source={{ uri: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3c/Google_Favicon_2025.svg/1002px-Google_Favicon_2025.svg.png' }}
+    style={{ width: 25, height: 25, marginRight: 10 }}
+     resizeMode="contain"
+  />
+  <Text style={{ color: '#000', fontWeight: '500' }}>Sign in with Google</Text>
+</TouchableOpacity>
+
   );
 }

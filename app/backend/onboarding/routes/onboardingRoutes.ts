@@ -1,14 +1,15 @@
 import express, { Request, Response } from 'express';
 import prisma from '../../lib/prisma';
 import { z } from 'zod';
-
+import { clerkClient } from '@clerk/clerk-sdk-node';
 const router = express.Router();
 
 const onboardingSchema = z.object({
   photoUrl: z.string().url().nullable().optional(),
   message: z.string().optional(),
-  userId: z.string().min(1, 'userId is required'),
+  sessionId: z.string().min(1, 'sessionId is required'), // <-- change from userId
 });
+
 
 router.post('/test', (req, res) => {
   console.log('POST /api/onboarding/test hit');
@@ -18,7 +19,7 @@ router.post('/test', (req, res) => {
 // POST /api/user/onboarding
 router.post('/', async (req: Request, res: Response) => {
   try {
-    // Validate incoming body (now includes userId directly)
+    // Validate incoming body (now includes sessionId instead of userId)
     const result = onboardingSchema.safeParse(req.body);
 
     if (!result.success) {
@@ -26,7 +27,11 @@ router.post('/', async (req: Request, res: Response) => {
       return res.status(400).json({ errors: result.error.format() });
     }
 
-    let { photoUrl, message, userId } = result.data;
+    let { photoUrl, message, sessionId } = result.data;
+
+    // Resolve sessionId to userId
+    const session = await clerkClient.sessions.getSession(sessionId);
+    const userId = session.userId;
 
     if (!photoUrl || photoUrl.trim() === '') {
       photoUrl = null;
@@ -51,6 +56,7 @@ router.post('/', async (req: Request, res: Response) => {
     });
   }
 });
+
 
 // GET /api/user/onboarding?userId=xxx
 router.get('/', async (req, res) => {
