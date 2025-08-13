@@ -1,18 +1,14 @@
 import express, { Request, Response } from 'express';
 import prisma from '../../lib/prisma';
 import { z } from 'zod';
-import { Clerk } from '@clerk/clerk-sdk-node';
-
 
 const router = express.Router();
 
 const onboardingSchema = z.object({
   photoUrl: z.string().url().nullable().optional(),
   message: z.string().optional(),
+  userId: z.string().min(1, 'userId is required'),
 });
-
-// Initialize Clerk with your secret key from env variables
-const clerk =  Clerk({ apiKey: process.env.CLERK_SECRET_KEY });
 
 router.post('/test', (req, res) => {
   console.log('POST /api/onboarding/test hit');
@@ -22,26 +18,7 @@ router.post('/test', (req, res) => {
 // POST /api/user/onboarding
 router.post('/', async (req: Request, res: Response) => {
   try {
-    // Extract token from Authorization header
-    const authHeader = req.headers.authorization;
-
-    if (!authHeader?.startsWith('Bearer ')) {
-      return res.status(401).json({ error: 'Unauthorized: Missing Bearer token' });
-    }
-
-    const token = authHeader.split(' ')[1];
-
-    // Verify token with Clerk
-    const session = await clerk.sessions.verifySession(token, process.env.CLERK_SECRET_KEY!);
-
-    if (!session) {
-      return res.status(401).json({ error: 'Unauthorized: Invalid token' });
-    }
-
-    // Extract verified userId from session
-    const userId = session.userId;
-
-    // Validate the body except userId since it's from the token
+    // Validate incoming body (now includes userId directly)
     const result = onboardingSchema.safeParse(req.body);
 
     if (!result.success) {
@@ -49,7 +26,7 @@ router.post('/', async (req: Request, res: Response) => {
       return res.status(400).json({ errors: result.error.format() });
     }
 
-    let { photoUrl, message } = result.data;
+    let { photoUrl, message, userId } = result.data;
 
     if (!photoUrl || photoUrl.trim() === '') {
       photoUrl = null;
@@ -63,7 +40,7 @@ router.post('/', async (req: Request, res: Response) => {
       create: { userId, photoUrl, message },
     });
 
-    console.log('Upsert successful');
+    console.log('✅ Upsert successful');
     res.status(200).json({ success: true });
   } catch (error) {
     console.error('Failed to save onboarding data:', error);

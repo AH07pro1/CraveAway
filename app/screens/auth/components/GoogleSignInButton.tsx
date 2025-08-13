@@ -11,14 +11,14 @@ export default function GoogleSignInButton() {
   const { session } = useSession();
   const navigation = useNavigation<any>();
 
-  async function waitForSession(timeoutMs = 3000) {
-  const start = Date.now();
-  while (!session && Date.now() - start < timeoutMs) {
-    await new Promise(res => setTimeout(res, 200));
+  // Helper to wait until session is loaded or timeout
+  async function waitForSession(timeoutMs = 5000) {
+    const start = Date.now();
+    while (!session && Date.now() - start < timeoutMs) {
+      await new Promise(res => setTimeout(res, 200));
+    }
+    if (!session) throw new Error('Session not loaded after waiting');
   }
-  if (!session) throw new Error('Session not loaded after waiting');
-}
-
 
   const handleGoogleSignIn = async () => {
     try {
@@ -34,20 +34,12 @@ export default function GoogleSignInButton() {
         await setActive({ session: createdSessionId });
         console.log('✅ Signed in with Google!');
 
-        // Wait briefly to let session update
-        await new Promise((res) => setTimeout(res, 500));
-
-        if (!session) {
-          throw new Error('Session not loaded yet');
-        }
-
+        // Wait for the session to be ready before continuing
         await waitForSession();
-const clerkSessionToken = await session.getToken();
 
-
-        if (!clerkSessionToken) {
-          throw new Error('Could not get Clerk session token');
-        }
+        if (!session) throw new Error('Session is not available');
+        const clerkSessionToken = await session.getToken();
+        if (!clerkSessionToken) throw new Error('Could not get Clerk session token');
 
         if (onboardStr) {
           const onboardingPayload = JSON.parse(onboardStr);
