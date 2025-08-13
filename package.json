@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@clerk/clerk-expo": "^2.14.4",
+    "@clerk/clerk-sdk-node": "^4.13.23",
     "@prisma/client": "^6.13.0",
     "@prisma/extension-accelerate": "^2.0.1",
     "@react-native-async-storage/async-storage": "^2.2.0",

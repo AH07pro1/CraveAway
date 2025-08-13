@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { TouchableOpacity, Text, Alert } from 'react-native';
-import { useOAuth, useSignIn, useUser } from '@clerk/clerk-expo';
+import { useOAuth, useSignIn, useSession } from '@clerk/clerk-expo';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import { API_URL } from '../../../config';
@@ -8,93 +8,17 @@ import { API_URL } from '../../../config';
 export default function GoogleSignInButton() {
   const { startOAuthFlow } = useOAuth({ strategy: 'oauth_google' });
   const { setActive } = useSignIn();
-  const { user, isLoaded: userLoaded } = useUser();
+  const { session } = useSession();
   const navigation = useNavigation<any>();
 
-  const [signedIn, setSignedIn] = useState(false);
+  async function waitForSession(timeoutMs = 3000) {
+  const start = Date.now();
+  while (!session && Date.now() - start < timeoutMs) {
+    await new Promise(res => setTimeout(res, 200));
+  }
+  if (!session) throw new Error('Session not loaded after waiting');
+}
 
-  useEffect(() => {
-    async function postOnboardingAndNavigate() {
-      console.log('useEffect triggered with:', { signedIn, userLoaded, user });
-
-      if (!signedIn) {
-        console.log('Not signed in yet, returning');
-        return;
-      }
-
-      if (!userLoaded) {
-        console.log('User not loaded yet, returning');
-        return;
-      }
-
-      if (!user) {
-        console.log('User is null, waiting for user to load...');
-        return; // wait here until user is ready
-      }
-
-      // Small delay to ensure everything is ready
-      await new Promise((resolve) => setTimeout(resolve, 500));
-
-      try {
-        const userId = user.id;
-        console.log('User loaded with ID:', userId);
-
-        const onboardingString = await AsyncStorage.getItem('pendingOnboarding');
-        console.log('pendingOnboarding:', onboardingString);
-
-        if (onboardingString) {
-          const onboardingPayload = JSON.parse(onboardingString);
-
-          const bodyPayload: any = {
-            userId,
-            message: onboardingPayload.message || null,
-          };
-          if (onboardingPayload.photoUri && onboardingPayload.photoUri.trim() !== '') {
-            bodyPayload.photoUrl = onboardingPayload.photoUri;
-          }
-
-          console.log('Posting onboarding data:', bodyPayload);
-
-          const response = await fetch(`${API_URL}/api/onboarding`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(bodyPayload),
-          });
-
-          if (!response.ok) {
-            const text = await response.text();
-            console.warn('Onboarding post failed:', text);
-            Alert.alert('Onboarding post failed', text);
-            return; // Stop here to avoid navigating before fixing
-          } else {
-            console.log('Onboarding data posted successfully.');
-            Alert.alert('Onboarding', 'Data posted successfully.');
-          }
-
-          await AsyncStorage.removeItem('pendingOnboarding');
-          console.log('Onboarding data removed from AsyncStorage.');
-        } else {
-          console.log('No onboarding data to post.');
-        }
-
-        const hasPaid = await AsyncStorage.getItem('hasPaid');
-        console.log('hasPaid:', hasPaid);
-
-        navigation.reset({
-          index: 0,
-          routes: [{ name: hasPaid === 'true' ? 'Tabs' : 'Paywall' }],
-        });
-        console.log('Navigation done.');
-
-        setSignedIn(false);
-      } catch (err) {
-        console.error('Error during onboarding post and navigation:', err);
-        Alert.alert('Error', 'An unexpected error occurred.');
-      }
-    }
-
-    postOnboardingAndNavigate();
-  }, [signedIn, userLoaded, user]);
 
   const handleGoogleSignIn = async () => {
     try {
@@ -109,9 +33,52 @@ export default function GoogleSignInButton() {
       if (createdSessionId && setActive) {
         await setActive({ session: createdSessionId });
         console.log('✅ Signed in with Google!');
-        Alert.alert('Success', 'Signed in with Google!');
 
-        setSignedIn(true); // trigger effect to post onboarding & navigate
+        // Wait briefly to let session update
+        await new Promise((res) => setTimeout(res, 500));
+
+        if (!session) {
+          throw new Error('Session not loaded yet');
+        }
+
+        await waitForSession();
+const clerkSessionToken = await session.getToken();
+
+
+        if (!clerkSessionToken) {
+          throw new Error('Could not get Clerk session token');
+        }
+
+        if (onboardStr) {
+          const onboardingPayload = JSON.parse(onboardStr);
+          console.log('Posting onboarding data to backend...');
+
+          const res = await fetch(`${API_URL}/api/onboarding`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${clerkSessionToken}`,
+            },
+            body: JSON.stringify(onboardingPayload),
+          });
+
+          if (!res.ok) {
+            const text = await res.text();
+            console.warn('Onboarding post failed:', text);
+            Alert.alert('Error', 'Failed to post onboarding data');
+          } else {
+            console.log('✅ Onboarding posted successfully');
+            await AsyncStorage.removeItem('pendingOnboarding');
+          }
+        } else {
+          console.log('No onboarding data to post');
+        }
+
+        const hasPaid = await AsyncStorage.getItem('hasPaid');
+        navigation.reset({
+          index: 0,
+          routes: [{ name: hasPaid === 'true' ? 'Tabs' : 'Paywall' }],
+        });
       }
     } catch (err) {
       console.error('Google sign-in failed:', err);

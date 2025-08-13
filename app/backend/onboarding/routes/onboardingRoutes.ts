@@ -1,14 +1,18 @@
 import express, { Request, Response } from 'express';
 import prisma from '../../lib/prisma';
 import { z } from 'zod';
+import { Clerk } from '@clerk/clerk-sdk-node';
+
 
 const router = express.Router();
 
 const onboardingSchema = z.object({
-  userId: z.string().min(1),
   photoUrl: z.string().url().nullable().optional(),
   message: z.string().optional(),
 });
+
+// Initialize Clerk with your secret key from env variables
+const clerk =  Clerk({ apiKey: process.env.CLERK_SECRET_KEY });
 
 router.post('/test', (req, res) => {
   console.log('POST /api/onboarding/test hit');
@@ -17,35 +21,46 @@ router.post('/test', (req, res) => {
 
 // POST /api/user/onboarding
 router.post('/', async (req: Request, res: Response) => {
-  console.log('POST body received:', req.body);
-  const result = onboardingSchema.safeParse(req.body);
-
-  if (!result.success) {
-    console.warn('Validation errors:', result.error.format());
-    return res.status(400).json({ errors: result.error.format() });
-  }
-
-  let { userId, photoUrl, message } = result.data;
-
-  // Normalize photoUrl: if null, empty string or invalid, set to null
-  if (!photoUrl || photoUrl.trim() === '') {
-    photoUrl = null;
-  }
-
   try {
+    // Extract token from Authorization header
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader?.startsWith('Bearer ')) {
+      return res.status(401).json({ error: 'Unauthorized: Missing Bearer token' });
+    }
+
+    const token = authHeader.split(' ')[1];
+
+    // Verify token with Clerk
+    const session = await clerk.sessions.verifySession(token, process.env.CLERK_SECRET_KEY!);
+
+    if (!session) {
+      return res.status(401).json({ error: 'Unauthorized: Invalid token' });
+    }
+
+    // Extract verified userId from session
+    const userId = session.userId;
+
+    // Validate the body except userId since it's from the token
+    const result = onboardingSchema.safeParse(req.body);
+
+    if (!result.success) {
+      console.warn('Validation errors:', result.error.format());
+      return res.status(400).json({ errors: result.error.format() });
+    }
+
+    let { photoUrl, message } = result.data;
+
+    if (!photoUrl || photoUrl.trim() === '') {
+      photoUrl = null;
+    }
+
     console.log('Upserting onboarding data for user:', userId);
 
     await prisma.userProgress.upsert({
       where: { userId },
-      update: {
-        photoUrl,
-        message,
-      },
-      create: {
-        userId,
-        photoUrl,
-        message,
-      },
+      update: { photoUrl, message },
+      create: { userId, photoUrl, message },
     });
 
     console.log('Upsert successful');
