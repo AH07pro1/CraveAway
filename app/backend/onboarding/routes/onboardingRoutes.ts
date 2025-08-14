@@ -2,17 +2,16 @@ import express, { Request, Response } from 'express';
 import prisma from '../../lib/prisma';
 import { z } from 'zod';
 import { clerkClient } from '@clerk/clerk-sdk-node';
+
 const router = express.Router();
-import { Clerk } from '@clerk/clerk-sdk-node';
 
-
+// Schema for onboarding
 const onboardingSchema = z.object({
   photoUrl: z.string().url().nullable().optional(),
   message: z.string().optional(),
-  sessionId: z.string().min(1, 'sessionId is required'), // <-- change from userId
 });
 
-
+// Test route
 router.post('/test', (req, res) => {
   console.log('POST /api/onboarding/test hit');
   res.json({ message: 'POST test route works!' });
@@ -21,7 +20,7 @@ router.post('/test', (req, res) => {
 // POST /api/user/onboarding
 router.post('/', async (req: Request, res: Response) => {
   try {
-    // Validate incoming body
+    // Validate body
     const result = onboardingSchema.safeParse(req.body);
     if (!result.success) {
       return res.status(400).json({ errors: result.error.format() });
@@ -29,17 +28,14 @@ router.post('/', async (req: Request, res: Response) => {
 
     const { photoUrl: rawPhotoUrl, message } = result.data;
 
-    // Get session token from Authorization header
+    // Get session token from header
     const token = req.headers.authorization?.replace('Bearer ', '');
     if (!token) {
       return res.status(401).json({ error: 'Missing session token' });
     }
 
-    // Verify the session token with Clerk
-    const sessionId = result.data.sessionId;
-    const session = await clerkClient.sessions.verifySession(sessionId, token);
-
-
+    // Verify session using Clerk
+    const session = await clerkClient.sessions.verifySession(token, token); 
     if (!session || !session.userId) {
       return res.status(401).json({ error: 'Invalid or expired session token' });
     }
@@ -66,14 +62,11 @@ router.post('/', async (req: Request, res: Response) => {
   }
 });
 
-
 // GET /api/user/onboarding?userId=xxx
 router.get('/', async (req, res) => {
   const userId = req.query.userId as string;
 
-  if (!userId) {
-    return res.status(400).json({ error: 'userId query param is required' });
-  }
+  if (!userId) return res.status(400).json({ error: 'userId query param is required' });
 
   try {
     console.log('Fetching onboarding data for user:', userId);
