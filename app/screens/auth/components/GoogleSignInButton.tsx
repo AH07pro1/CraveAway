@@ -21,7 +21,9 @@ export default function GoogleSignInButton() {
         await setActive({ session: createdSessionId });
         console.log('✅ Signed in with Google!');
 
-        const token = session?.id; // frontend session token
+        // Get the actual JWT token from the session
+        const token = await session?.getToken();
+        if (!token) throw new Error('Failed to get session JWT');
 
         if (onboardStr) {
           const onboardingPayload = JSON.parse(onboardStr);
@@ -32,7 +34,7 @@ export default function GoogleSignInButton() {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              Authorization: `Bearer ${token}`, // only token needed
+              Authorization: `Bearer ${token}`, // <-- proper JWT
             },
             body: JSON.stringify(onboardingPayload),
           });
