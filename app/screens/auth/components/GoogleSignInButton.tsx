@@ -19,7 +19,7 @@ export default function GoogleSignInButton() {
     if (!session) throw new Error('Session not loaded after waiting');
   }
 
- const handleGoogleSignIn = async () => {
+const handleGoogleSignIn = async () => {
   try {
     const onboardStr = await AsyncStorage.getItem('pendingOnboarding');
 
@@ -29,18 +29,20 @@ export default function GoogleSignInButton() {
       await setActive({ session: createdSessionId });
       console.log('✅ Signed in with Google!');
 
-      // Use Clerk API to get userId from session if needed
-      // But easiest: store the sessionId and post onboarding on backend
+      // Grab session token to send to backend
+      const token = session?.id; // Clerk session token
+
       if (onboardStr) {
-        const onboardingPayload = {
-          ...JSON.parse(onboardStr),
-          sessionId: createdSessionId, // send sessionId instead of userId
-        };
+        const onboardingPayload = JSON.parse(onboardStr);
+
         console.log('Posting onboarding data to backend...', onboardingPayload);
 
         const res = await fetch(`${API_URL}/api/onboarding`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`, // pass token in header
+          },
           body: JSON.stringify(onboardingPayload),
         });
 
@@ -53,7 +55,7 @@ export default function GoogleSignInButton() {
           await AsyncStorage.removeItem('pendingOnboarding');
         }
       }
-      
+
       const hasPaid = await AsyncStorage.getItem('hasPaid');
       navigation.reset({
         index: 0,
@@ -65,7 +67,6 @@ export default function GoogleSignInButton() {
     Alert.alert('Error', 'Google sign-in failed');
   }
 };
-
   return (
     <TouchableOpacity
   onPress={handleGoogleSignIn}
