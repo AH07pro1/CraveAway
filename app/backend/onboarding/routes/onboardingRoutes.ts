@@ -2,15 +2,14 @@ import express, { Request, Response } from 'express';
 import prisma from '../../lib/prisma';
 import { z } from 'zod';
 import { verifyToken } from '@clerk/clerk-sdk-node';
-
 const router = express.Router();
-
+import { createClerkClient } from '@clerk/backend';
 // Schema for onboarding
 const onboardingSchema = z.object({
   photoUrl: z.string().url().nullable().optional(),
   message: z.string().optional(),
 });
-
+const clerkClient = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY });
 // Test route
 router.post('/test', (req, res) => {
   console.log('POST /api/onboarding/test hit');
@@ -20,29 +19,22 @@ router.post('/test', (req, res) => {
 // POST /api/user/onboarding
 router.post('/', async (req: Request, res: Response) => {
   try {
-    // Validate body
+    // Validate request body
     const result = onboardingSchema.safeParse(req.body);
     if (!result.success) {
       return res.status(400).json({ errors: result.error.format() });
     }
     const { photoUrl: rawPhotoUrl, message } = result.data;
 
-    // Get session token from header
-    const token = req.headers.authorization?.replace('Bearer ', '');
-    if (!token) return res.status(401).json({ error: 'Missing session token' });
+    // Get session ID from Authorization header
+    const sessionId = req.headers.authorization?.replace('Bearer ', '');
+    if (!sessionId) return res.status(401).json({ error: 'Missing session token' });
 
-    // Networkless verification
-    const verifiedToken = await verifyToken(token, {
-      jwtKey: process.env.CLERK_SECRET_KEY,
-      authorizedParties: ['http://localhost:3000', 'api.twins4soft.com'], // Replace with your authorized parties
-      issuer: 'live-whale-13.clerk.accounts.dev', // Replace with your Clerk instance URL
-    });
+    // Verify session via Clerk
+    const session = await clerkClient.sessions.getSession(sessionId);
+    if (!session) return res.status(401).json({ error: 'Invalid or expired session token' });
 
-    if (!verifiedToken) {
-      return res.status(401).json({ error: 'Invalid or expired session token' });
-    }
-
-    const userId = verifiedToken.sub;
+    const userId = session.userId;
     const photoUrl = rawPhotoUrl?.trim() === '' ? null : rawPhotoUrl;
 
     // Upsert onboarding data
@@ -63,6 +55,10 @@ router.post('/', async (req: Request, res: Response) => {
     });
   }
 });
+
+
+
+
 // GET /api/user/onboarding?userId=xxx
 router.get('/', async (req, res) => {
   const userId = req.query.userId as string;

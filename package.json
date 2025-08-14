@@ -10,6 +10,7 @@
     "seed": "ts-node prisma/seed.ts"
   },
   "dependencies": {
+    "@clerk/backend": "^2.9.0",
     "@clerk/clerk-expo": "^2.14.4",
     "@clerk/clerk-sdk-node": "^4.13.23",
     "@prisma/client": "^6.13.0",
