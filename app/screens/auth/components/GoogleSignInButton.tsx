@@ -1,6 +1,6 @@
 import React from 'react';
 import { TouchableOpacity, Text, Alert, Image } from 'react-native';
-import { useOAuth, useSignIn, useSession } from '@clerk/clerk-expo';
+import { useOAuth, useSignIn } from '@clerk/clerk-expo';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import { API_URL } from '../../../config';
@@ -8,7 +8,6 @@ import { API_URL } from '../../../config';
 export default function GoogleSignInButton() {
   const { startOAuthFlow } = useOAuth({ strategy: 'oauth_google' });
   const { setActive } = useSignIn();
-  const { session } = useSession();
   const navigation = useNavigation<any>();
 
   const handleGoogleSignIn = async () => {
@@ -21,8 +20,6 @@ export default function GoogleSignInButton() {
         await setActive({ session: createdSessionId });
         console.log('✅ Signed in with Google!');
 
-        const token = session?.id; // frontend session token
-
         if (onboardStr) {
           const onboardingPayload = JSON.parse(onboardStr);
 
@@ -32,7 +29,6 @@ export default function GoogleSignInButton() {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              Authorization: `Bearer ${token}`, // only token needed
             },
             body: JSON.stringify(onboardingPayload),
           });
