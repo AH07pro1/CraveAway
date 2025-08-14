@@ -15,16 +15,22 @@ export default function GoogleSignInButton() {
     try {
       const onboardStr = await AsyncStorage.getItem('pendingOnboarding');
 
+      // Start Google OAuth flow
       const { createdSessionId } = await startOAuthFlow();
 
       if (createdSessionId && setActive) {
+        // Activate the new session
         await setActive({ session: createdSessionId });
         console.log('✅ Signed in with Google!');
 
-        // Get the actual JWT token from the session
+        // Wait for the session to fully initialize
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        // Get the actual JWT token
         const token = await session?.getToken();
         if (!token) throw new Error('Failed to get session JWT');
 
+        // Post onboarding data if it exists
         if (onboardStr) {
           const onboardingPayload = JSON.parse(onboardStr);
 
@@ -34,7 +40,7 @@ export default function GoogleSignInButton() {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              Authorization: `Bearer ${token}`, // <-- proper JWT
+              Authorization: `Bearer ${token}`,
             },
             body: JSON.stringify(onboardingPayload),
           });
