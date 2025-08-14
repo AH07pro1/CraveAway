@@ -23,24 +23,35 @@ export default function GoogleSignInButton() {
         await setActive({ session: createdSessionId });
         console.log('✅ Signed in with Google!');
 
-        // Wait for the session to fully initialize
-        await new Promise(resolve => setTimeout(resolve, 500));
+        // Poll for the JWT until the session is ready
+        const token = await new Promise<string>((resolve, reject) => {
+          const interval = setInterval(async () => {
+            const t = await session?.getToken();
+            if (t) {
+              clearInterval(interval);
+              resolve(t);
+            }
+          }, 100);
 
-        // Get the actual JWT token
-        const token = await session?.getToken();
-        if (!token) throw new Error('Failed to get session JWT');
+          // Timeout after 5 seconds
+          setTimeout(() => {
+            clearInterval(interval);
+            reject(new Error('Failed to get session JWT'));
+          }, 5000);
+        });
+
+        console.log('✅ Got session JWT:', token);
 
         // Post onboarding data if it exists
         if (onboardStr) {
           const onboardingPayload = JSON.parse(onboardStr);
-
           console.log('Posting onboarding data to backend...', onboardingPayload);
 
           const res = await fetch(`${API_URL}/api/onboarding`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              Authorization: `Bearer ${token}`,
+              Authorization: `Bearer ${token}`, // proper JWT
             },
             body: JSON.stringify(onboardingPayload),
           });
