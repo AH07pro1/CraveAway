@@ -20,6 +20,8 @@ app.use((req, res, next) => {
   next();
 });
 
+console.log('CLERK_SECRET_KEY =', process.env.CLERK_SECRET_KEY);
+
 
 // Route registrations
 app.use('/api/craving', cravingRoutes);

@@ -33,7 +33,10 @@ const handleGoogleSignIn = async () => {
       const token = session?.id; // Clerk session token
 
       if (onboardStr) {
-        const onboardingPayload = JSON.parse(onboardStr);
+        const onboardingPayload = {
+      ...JSON.parse(onboardStr),
+      sessionId: createdSessionId, // ✅ include this
+    };
 
         console.log('Posting onboarding data to backend...', onboardingPayload);
 
