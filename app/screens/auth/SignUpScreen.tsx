@@ -38,23 +38,49 @@ export default function SignUpScreen() {
   };
 
   const onVerifyPress = async () => {
-    if (!isLoaded) return;
-    setError(null);
+  if (!isLoaded) return;
+  setError(null);
 
-    try {
-      const signUpAttempt = await signUp.attemptEmailAddressVerification({ code });
+  try {
+    const signUpAttempt = await signUp.attemptEmailAddressVerification({ code });
 
-      if (signUpAttempt.status === 'complete') {
-        await setActive({ session: signUpAttempt.createdSessionId });
-        setPendingVerification(false);
-        setJustVerified(true); // Flag to post after user loads
-      } else {
-        setError('Verification incomplete. Please try again.');
+    if (signUpAttempt.status === 'complete') {
+      await setActive({ session: signUpAttempt.createdSessionId });
+      setPendingVerification(false);
+
+      const token = signUpAttempt.createdSessionId;
+
+      // Post onboarding
+      try {
+        await fetch(`${API_URL}/api/onboarding`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`, // ✅ secure session auth
+          },
+          body: JSON.stringify({
+            photoUrl: onboardingData.photoUrl,
+            message: onboardingData.message,
+          }),
+        });
+      } catch (err) {
+        console.warn('Failed to post onboarding data after sign-up', err);
       }
-    } catch (err: any) {
-      setError(err?.errors?.[0]?.message || 'Verification failed.');
+
+      // Navigate
+      const hasPaid = await AsyncStorage.getItem('hasPaid');
+      navigation.reset({
+        index: 0,
+        routes: [{ name: hasPaid === 'true' ? 'Tabs' : 'Paywall' }],
+      });
+    } else {
+      setError('Verification incomplete. Please try again.');
     }
-  };
+  } catch (err: any) {
+    setError(err?.errors?.[0]?.message || 'Verification failed.');
+  }
+};
+
 
   useEffect(() => {
   let interval: any;

@@ -44,70 +44,43 @@ export default function SignInScreen() {
       });
       console.warn('signInAttempt object:', signInAttempt);
 
-      if (signInAttempt.status === 'complete') {
-        await setActive({ session: signInAttempt.createdSessionId });
-        console.warn('User signed in and active session set.');
+     if (signInAttempt.status === 'complete') {
+  await setActive({ session: signInAttempt.createdSessionId });
 
-        try {
-          console.warn('Fetching onboarding data from AsyncStorage...');
-          const onboardingString = await AsyncStorage.getItem('pendingOnboarding');
-          console.warn('pendingOnboarding string:', onboardingString);
+  const token = signInAttempt.createdSessionId;
 
-          if (onboardingString) {
-            const onboardingPayload = JSON.parse(onboardingString);
-            console.warn('Posting onboarding data:', onboardingPayload);
+  // Post onboarding if any
+  const onboardingString = await AsyncStorage.getItem('pendingOnboarding');
+  if (onboardingString) {
+    const onboardingPayload = JSON.parse(onboardingString);
 
-            try {
-              const response = await fetch(`${API_URL}/api/onboarding`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  userId: user?.id ?? '', // verify if backend expects this
-                  photoUrl: onboardingPayload.photoUri || null,
-                  message: onboardingPayload.message || null,
-                }),
-              });
+    const res = await fetch(`${API_URL}/api/onboarding`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`, // ✅ use token not userId
+      },
+      body: JSON.stringify({
+        photoUrl: onboardingPayload.photoUri || null,
+        message: onboardingPayload.message || null,
+      }),
+    });
 
-              console.warn('Fetch response status:', response.status);
+    if (!res.ok) {
+      console.warn('Onboarding post failed:', await res.text());
+    } else {
+      await AsyncStorage.removeItem('pendingOnboarding');
+    }
+  }
 
-              if (!response.ok) {
-                const text = await response.text();
-                console.warn('Onboarding post failed:', text);
-              } else {
-                console.warn('Onboarding data posted successfully.');
-              }
-            } catch (fetchErr) {
-              console.error('Fetch error:', fetchErr);
-            }
-
-            try {
-              await AsyncStorage.removeItem('pendingOnboarding');
-              console.warn('Onboarding data removed from AsyncStorage.');
-            } catch (removeErr) {
-              console.error('Error removing onboarding data:', removeErr);
-            }
-          } else {
-            console.warn('No onboarding data to post.');
-          }
-        } catch (storageErr) {
-          console.error('Error reading onboarding data:', storageErr);
-        }
-
-        try {
-          console.warn('Retrieving hasPaid status...');
-          const hasPaid = await AsyncStorage.getItem('hasPaid');
-          console.warn('hasPaid:', hasPaid);
-
-          console.warn('Navigating based on payment status...');
-          navigation.reset({
-            index: 0,
-            routes: [{ name: hasPaid === 'true' ? 'Tabs' : 'Paywall' }],
-          });
-          console.warn('Navigation done.');
-        } catch (navErr) {
-          console.error('Navigation error:', navErr);
-        }
-      } else {
+  // Navigate
+  const hasPaid = await AsyncStorage.getItem('hasPaid');
+  navigation.reset({
+    index: 0,
+    routes: [{ name: hasPaid === 'true' ? 'Tabs' : 'Paywall' }],
+  });
+}
+ else {
         setError('Sign in incomplete. Please try again.');
         console.warn('Sign in incomplete status:', signInAttempt.status);
       }

@@ -390,18 +390,20 @@ export default function StatsScreen({ navigation }: any) {
           </Text>
 
           <BarChart
-            data={chartBarData}
-            barWidth={baseBarWidth}
-            spacing={view === 'monthly' ? baseSpacing * 2 : baseSpacing}
-            noOfSections={4}
-            maxValue={Math.max(...chartBarData.map((d) => d.value), 1)}
-            yAxisTextStyle={{ color: '#666', fontSize: 12 }}
-            xAxisLabelTextStyle={{ color: '#444', fontSize: 11 }}
-            xAxisLabelTextRotate={view === 'weekly' ? -45 : 0}
-            isAnimated
-            initialSpacing={initialSpacing}
-            showVerticalLines={false}
-            hideDataPoints
+  data={chartBarData}
+  barWidth={baseBarWidth}
+  spacing={view === 'monthly' ? baseSpacing * 2 : baseSpacing}
+  noOfSections={4}
+  maxValue={Math.max(...chartBarData.map((d) => d.value), 1)}
+  yAxisTextStyle={{ color: '#666', fontSize: 12 }}
+  xAxisLabelTextStyle={{ color: '#444', fontSize: 11 }}
+  xAxisLabelTextRotate={view === 'weekly' ? -45 : 0}
+  isAnimated
+  initialSpacing={0} // ✅ FIX: removes gap between Y-axis and first bar
+  endSpacing={0}     // ✅ Optional: removes gap after last bar
+  yAxisLabelWidth={40} // ✅ Ensures labels fit without pushing bars
+  showVerticalLines={false}
+  hideDataPoints
             onPress={(index) => {
               setTooltipIndex(index);
               if (view === 'weekly') {
