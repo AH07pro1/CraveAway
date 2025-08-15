@@ -122,9 +122,10 @@ export default function SignUpScreen() {
 }, [justVerified, userLoaded, user]);
 
 
-  if (pendingVerification) {
-    return (
-      <View style={{ flex: 1, backgroundColor: colors.background, padding: 24, justifyContent: 'center' }}>
+if (pendingVerification) {
+  return (
+    <View style={{ flex: 1, backgroundColor: colors.background, padding: 24 }}>
+      <View style={{ flex: 1, justifyContent: 'center' }}>
         <Text style={{ fontSize: 24, fontWeight: 'bold', color: colors.primary, marginBottom: 24, textAlign: 'center' }}>
           Verify your email
         </Text>
@@ -167,15 +168,19 @@ export default function SignUpScreen() {
           <Text style={{ color: 'white', textAlign: 'center', fontSize: 18, fontWeight: '600' }}>Verify</Text>
         </TouchableOpacity>
       </View>
-    );
-  }
+    </View>
+  );
+}
 
-  return (
-    <View style={{ flex: 1, backgroundColor: colors.background, padding: 24, justifyContent: 'center' }}>
-      <Text style={{ fontSize: 28, fontWeight: 'bold', color: colors.primary, marginBottom: 24, textAlign: 'center' }}>
+return (
+  <View style={{ flex: 1, backgroundColor: colors.background, padding: 24 }}>
+    <View style={{ flex: 1, justifyContent: 'center' }}>
+      {/* Heading */}
+      <Text style={{ fontSize: 28, fontWeight: 'bold', color: colors.primary, marginBottom: 32, textAlign: 'center' }}>
         Sign Up
       </Text>
 
+      {/* Email Input */}
       <TextInput
         autoCapitalize="none"
         keyboardType="email-address"
@@ -194,6 +199,7 @@ export default function SignUpScreen() {
         }}
       />
 
+      {/* Password Input */}
       <TextInput
         placeholder="Password"
         secureTextEntry
@@ -211,8 +217,10 @@ export default function SignUpScreen() {
         }}
       />
 
+      {/* Error Message */}
       {error && <Text style={{ color: colors.error, textAlign: 'center', marginBottom: 16 }}>{error}</Text>}
 
+      {/* Continue Button */}
       <TouchableOpacity
         onPress={onSignUpPress}
         style={{
@@ -231,12 +239,14 @@ export default function SignUpScreen() {
         <Text style={{ color: 'white', textAlign: 'center', fontSize: 18, fontWeight: '600' }}>Continue</Text>
       </TouchableOpacity>
 
-      <View style={{ flexDirection: 'row', justifyContent: 'center' }}>
+      {/* Already have an account */}
+      <View style={{ flexDirection: 'row', justifyContent: 'center', marginTop: 16 }}>
         <Text style={{ color: colors.textSecondary }}>Already have an account? </Text>
         <TouchableOpacity onPress={() => navigation.navigate('SignIn')}>
           <Text style={{ color: colors.primary, fontWeight: '600' }}>Sign in</Text>
         </TouchableOpacity>
       </View>
     </View>
-  );
+  </View>
+);
 }

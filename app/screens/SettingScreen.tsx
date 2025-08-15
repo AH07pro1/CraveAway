@@ -5,15 +5,15 @@ import {
   Text,
   TextInput,
   Pressable,
-  ScrollView,
-  Alert,
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   SafeAreaView,
+  FlatList,
 } from "react-native";
 import colors from "../utils/colors";
 import { useUser } from "@clerk/clerk-expo";
+import Popup from "./auth/components/Popup";
 
 type CravingType = { name: string; isCustom: boolean };
 
@@ -26,14 +26,25 @@ export default function SettingsScreen() {
   const [adding, setAdding] = useState(false);
   const [showList, setShowList] = useState(true);
 
+  // Popup state
+  const [popupVisible, setPopupVisible] = useState(false);
+  const [popupTitle, setPopupTitle] = useState("");
+  const [popupMessage, setPopupMessage] = useState("");
+
+  const showPopup = (title: string, message: string) => {
+    setPopupTitle(title);
+    setPopupMessage(message);
+    setPopupVisible(true);
+  };
+
   const addNewType = async () => {
     const trimmed = newType.trim();
     if (!trimmed) {
-      Alert.alert("Validation", "Type name cannot be empty.");
+      showPopup("Validation", "Type name cannot be empty.");
       return;
     }
     if (cravingTypes.some((t) => t.name === trimmed)) {
-      Alert.alert("Validation", "This type already exists.");
+      showPopup("Validation", "This type already exists.");
       return;
     }
 
@@ -47,16 +58,16 @@ export default function SettingsScreen() {
 
       if (!res.ok) {
         const err = await res.json();
-        Alert.alert("Error", err.error || "Failed to add type.");
+        showPopup("Error", err.error || "Failed to add type.");
         return;
       }
 
       const created = await res.json();
       setCravingTypes((prev) => [...prev, created]);
       setNewType("");
-      Alert.alert("Success", "New craving type added!");
+      showPopup("Success", "New craving type added!");
     } catch {
-      Alert.alert("Error", "Network error.");
+      showPopup("Error", "Network error.");
     } finally {
       setAdding(false);
     }
@@ -78,7 +89,7 @@ export default function SettingsScreen() {
         const data = await res.json();
         setCravingTypes(data);
       } catch (e) {
-        Alert.alert("Error", "Could not load craving types.");
+        showPopup("Error", "Could not load craving types.");
         console.warn("Fetch craving types error:", e);
       } finally {
         setLoading(false);
@@ -89,122 +100,149 @@ export default function SettingsScreen() {
   }, [user?.id]);
 
   return (
-    <SafeAreaView className="flex-1" style={{ backgroundColor: colors.background }}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : undefined}
-        className="flex-1"
+        style={{ flex: 1 }}
         keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
       >
-        <ScrollView
-          contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40 }}
-          keyboardShouldPersistTaps="handled"
-        >
-          {/* Title */}
-          <View className="pt-12 pb-6 items-center">
-            <Text
-              className="text-3xl font-extrabold text-center"
-              style={{ color: colors.primary }}
-            >
-              Settings
-            </Text>
-          </View>
+        <View style={{ flex: 1, paddingHorizontal: 20 }}>
+          {/* Title + Add New Type + List Header */}
+          <View>
+            {/* Title */}
+            <View style={{ paddingTop: 48, paddingBottom: 24, alignItems: "center" }}>
+              <Text style={{ fontSize: 32, fontWeight: "800", color: colors.primary }}>
+                Settings
+              </Text>
+            </View>
 
-          {/* Add New Craving Type */}
-          <View
-            className="mb-6 rounded-2xl p-5 shadow-md"
-            style={{
-              backgroundColor: colors.accentLight,
-              shadowColor: "#000",
-              shadowOpacity: 0.1,
-              shadowRadius: 8,
-              shadowOffset: { width: 0, height: 3 },
-              elevation: 5,
-            }}
-          >
-            <Text className="mb-3 font-semibold" style={{ color: colors.textMain }}>
-              Add New Custom Type
-            </Text>
-            <TextInput
-              value={newType}
-              onChangeText={setNewType}
-              placeholder="Type name (e.g. 'chocolate')"
-              placeholderTextColor={colors.textSecondary}
-              className="border border-gray-300 rounded-lg px-3 py-2 mb-4"
-              style={{ color: colors.textMain, backgroundColor: colors.background }}
-            />
-            <Pressable
-              onPress={addNewType}
-              disabled={adding}
-              className={`rounded-lg py-3 items-center ${
-                adding ? "bg-primary/60" : "bg-primary"
-              }`}
-              style={{ backgroundColor: adding ? `${colors.primary}99` : colors.primary }}
+            {/* Add New Craving Type */}
+            <View
+              style={{
+                marginBottom: 24,
+                borderRadius: 24,
+                padding: 20,
+                backgroundColor: colors.accentLight,
+                shadowColor: "#000",
+                shadowOpacity: 0.1,
+                shadowRadius: 8,
+                shadowOffset: { width: 0, height: 3 },
+                elevation: 5,
+              }}
             >
-              {adding ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text className="text-white font-bold text-base">Add Type</Text>
-              )}
+              <Text style={{ marginBottom: 12, fontWeight: "600", color: colors.textMain }}>
+                Add New Custom Type
+              </Text>
+              <TextInput
+                value={newType}
+                onChangeText={setNewType}
+                placeholder="Type name (e.g. 'chocolate')"
+                placeholderTextColor={colors.textSecondary}
+                style={{
+                  borderWidth: 1,
+                  borderColor: "#ccc",
+                  borderRadius: 12,
+                  padding: 12,
+                  marginBottom: 16,
+                  color: colors.textMain,
+                  backgroundColor: colors.background,
+                }}
+              />
+              <Pressable
+                onPress={addNewType}
+                disabled={adding}
+                style={{
+                  borderRadius: 12,
+                  paddingVertical: 14,
+                  alignItems: "center",
+                  backgroundColor: adding ? `${colors.primary}99` : colors.primary,
+                }}
+              >
+                {adding ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={{ color: "white", fontWeight: "700", fontSize: 16 }}>Add Type</Text>
+                )}
+              </Pressable>
+            </View>
+
+            {/* List Header */}
+            <Pressable
+              onPress={() => setShowList((v) => !v)}
+              style={{ marginBottom: 12, flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}
+            >
+              <Text style={{ fontSize: 18, fontWeight: "600", color: colors.textMain }}>
+                Current Craving Types ({cravingTypes.length})
+              </Text>
+              <Text style={{ fontSize: 24, fontWeight: "800", color: colors.primary }}>
+                {showList ? "−" : "+"}
+              </Text>
             </Pressable>
           </View>
 
-          {/* Craving Type List Header */}
-          <Pressable
-            onPress={() => setShowList((v) => !v)}
-            className="mb-3 flex-row justify-between items-center"
-          >
-            <Text className="text-lg font-semibold" style={{ color: colors.textMain }}>
-              Current Craving Types ({cravingTypes.length})
-            </Text>
-            <Text
-              className="text-primary font-extrabold text-2xl"
-              style={{ color: colors.primary }}
-            >
-              {showList ? "−" : "+"}
-            </Text>
-          </Pressable>
-
-          {/* Craving Type List */}
-          {showList ? (
+          {/* Scrollable Craving Types List */}
+          {showList && (
             loading ? (
               <ActivityIndicator size="large" color={colors.primary} />
             ) : sortedTypes.length === 0 ? (
-              <Text className="text-center" style={{ color: colors.textSecondary }}>
+              <Text style={{ textAlign: "center", color: colors.textSecondary }}>
                 No craving types found.
               </Text>
             ) : (
-              sortedTypes.map((type) => (
-                <View
-                  key={type.name}
-                  className="rounded-xl p-4 mb-3 shadow-sm flex-row items-center justify-between"
-                  style={{
-                    backgroundColor: colors.background,
-                    shadowColor: "#000",
-                    shadowOpacity: 0.05,
-                    shadowRadius: 4,
-                    elevation: 2,
-                  }}
-                >
-                  <Text
-                    className="capitalize text-base"
-                    style={{ color: colors.textMain }}
+              <FlatList
+                data={sortedTypes}
+                keyExtractor={(item) => item.name}
+                style={{ flex: 1 }}
+                contentContainerStyle={{ paddingBottom: 40 }}
+                renderItem={({ item }) => (
+                  <View
+                    style={{
+                      borderRadius: 16,
+                      padding: 16,
+                      marginBottom: 12,
+                      backgroundColor: colors.background,
+                      flexDirection: "row",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      shadowColor: "#000",
+                      shadowOpacity: 0.05,
+                      shadowRadius: 4,
+                      elevation: 2,
+                    }}
                   >
-                    {type.name}
-                  </Text>
-
-                  {type.isCustom && (
-                    <Text
-                      className="ml-2 px-2 py-1 text-xs font-semibold rounded bg-yellow-100 text-yellow-800"
-                      style={{ overflow: "hidden" }}
-                    >
-                      Custom
+                    <Text style={{ color: colors.textMain, fontSize: 16, textTransform: "capitalize" }}>
+                      {item.name}
                     </Text>
-                  )}
-                </View>
-              ))
+                    {item.isCustom && (
+                      <Text
+                        style={{
+                          marginLeft: 8,
+                          paddingHorizontal: 8,
+                          paddingVertical: 4,
+                          fontSize: 12,
+                          fontWeight: "600",
+                          borderRadius: 8,
+                          backgroundColor: "#FEF3C7",
+                          color: "#B45309",
+                        }}
+                      >
+                        Custom
+                      </Text>
+                    )}
+                  </View>
+                )}
+              />
             )
-          ) : null}
-        </ScrollView>
+          )}
+
+          {/* Popup */}
+          <Popup
+            visible={popupVisible}
+            title={popupTitle}
+            message={popupMessage}
+            onConfirm={() => setPopupVisible(false)}
+          />
+        </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );

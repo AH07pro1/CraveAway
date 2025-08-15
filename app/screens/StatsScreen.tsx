@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { API_URL } from "../config";
 import {
   View,
@@ -8,6 +8,7 @@ import {
   Pressable,
   SafeAreaView,
   LayoutAnimation,
+  Dimensions,
 } from 'react-native';
 import { format, parseISO, subDays } from 'date-fns';
 import { BarChart } from 'react-native-gifted-charts';
@@ -26,13 +27,28 @@ export default function StatsScreen({ navigation }: any) {
   const [tooltipIndex, setTooltipIndex] = useState<number | null>(null);
   const [tooltipType, setTooltipType] = useState<'resist' | 'gaveIn' | 'total' | null>(null);
 
-  // New states for cravings summary
+  // Cravings summary
   const [totalCravings, setTotalCravings] = useState(0);
   const [resistCount, setResistCount] = useState(0);
   const [gaveInCount, setGaveInCount] = useState(0);
   const [resistRatio, setResistRatio] = useState('0.0');
 
-  // New longest streak calculation (per type)
+  // Layout + scrolling
+  const scrollRef = useRef<ScrollView>(null);
+  const windowWidth = Dimensions.get('window').width;
+  const OUTER_PADDING = 20;    // matches contentContainerStyle paddingHorizontal
+  const CARD_PADDING = 20;     // p-5 on chart card
+  const Y_AXIS_LABEL_WIDTH = 44;
+  const CHART_HEIGHT = 220;
+  const NO_OF_SECTIONS = 4;
+
+  // Bar sizing (monthly thicker)
+  const BASE_BAR_WIDTH = 18;
+  const BASE_SPACING = 12;
+  const barWidth = view === 'monthly' ? 36 : BASE_BAR_WIDTH;
+  const spacing = view === 'monthly' ? 20 : BASE_SPACING;
+
+  // Longest streak calculation (per type)
   function calculateLongestStreaksByType(data: any[]) {
     const grouped: { [type: string]: { date: string; resolved: boolean }[] } = {};
 
@@ -127,7 +143,6 @@ export default function StatsScreen({ navigation }: any) {
   }, [navigation, user?.id]);
 
   // === Aggregation helpers ===
-
   function getWeeklyLabels() {
     const days = 7;
     const result: string[] = [];
@@ -145,6 +160,7 @@ export default function StatsScreen({ navigation }: any) {
   }
 
   function aggregateWeeklyCounts(cravings: any[], year: number, month: number) {
+    // NOTE: keep full 6 slots; do NOT trim trailing zeros (we'll pad explicitly in monthly)
     const weeksCount: number[] = [0, 0, 0, 0, 0, 0];
     cravings.forEach((c) => {
       const date = parseISO(c.createdAt);
@@ -154,9 +170,6 @@ export default function StatsScreen({ navigation }: any) {
         weeksCount[week - 1]++;
       }
     });
-    while (weeksCount.length && weeksCount[weeksCount.length - 1] === 0) {
-      weeksCount.pop();
-    }
     return weeksCount;
   }
 
@@ -171,12 +184,19 @@ export default function StatsScreen({ navigation }: any) {
     return monthsCount;
   }
 
+  // Monthly: ALWAYS show all weeks of CURRENT month (pad future weeks with 0)
   function getMonthlyLabelsAndData(cravings: any[]) {
     const today = new Date();
     const year = today.getFullYear();
     const month = today.getMonth();
 
-    const weeklyCounts = aggregateWeeklyCounts(cravings, year, month);
+    const weeklyCountsRaw = aggregateWeeklyCounts(cravings, year, month);
+
+    // How many weeks are in this month? (4 or 5, sometimes 6 when first day late in week + 31 days)
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const totalWeeksInMonth = Math.ceil(daysInMonth / 7); // 4–5 (occasionally 5)
+
+    const weeklyCounts = Array.from({ length: totalWeeksInMonth }, (_, i) => weeklyCountsRaw[i] || 0);
     const labels = weeklyCounts.map((_, i) => `Week ${i + 1}`);
 
     const data = weeklyCounts.map((count) => ({
@@ -194,7 +214,6 @@ export default function StatsScreen({ navigation }: any) {
     const monthlyCounts = aggregateMonthlyCounts(cravings, year);
 
     const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
     const labels = monthNames;
 
     const data = monthlyCounts.map((count) => ({
@@ -207,18 +226,15 @@ export default function StatsScreen({ navigation }: any) {
     return { labels, data };
   }
 
+  // Build labels + chart data per view
   let formattedLabels: string[] = [];
   let chartData: any[] = [];
 
   if (view === 'weekly') {
-    const selectedDates = getWeeklyLabels(); // returns dates like '2025-07-19'
+    const selectedDates = getWeeklyLabels(); // last 7 days
     chartData = getWeeklyChartData(dailyStats, selectedDates);
-    formattedLabels = selectedDates.map((date) => {
-      // convert to day abbreviation e.g. 'Mon'
-      return format(parseISO(date), 'EEE');
-    });
-  }
-  else if (view === 'monthly') {
+    formattedLabels = selectedDates.map((date) => format(parseISO(date), 'EEE'));
+  } else if (view === 'monthly') {
     const { labels, data } = getMonthlyLabelsAndData(cravings);
     formattedLabels = labels;
     chartData = data;
@@ -228,41 +244,23 @@ export default function StatsScreen({ navigation }: any) {
     chartData = data;
   }
 
-  const baseBarWidth = 18;
-  const baseSpacing = 12;
-  const daysCount = chartData.length;
-  const groupWidth = 2 * baseBarWidth + baseSpacing;
-  const viewportWidth = 320;
-
-  let totalWidth;
-  if (view === 'weekly') {
-    totalWidth = daysCount * groupWidth + baseSpacing;
-  } else {
-    totalWidth = Math.max(daysCount * (baseBarWidth + baseSpacing) + baseSpacing, 320);
-  }
-
-  const initialSpacing = Math.max(
-    totalWidth - viewportWidth / 2 - (view === 'weekly' ? groupWidth / 2 : baseBarWidth / 2),
-    0
-  );
-
-  let chartBarData;
+  // Transform to gifted-charts data
+  let chartBarData: any[];
 
   if (view === 'weekly') {
     chartBarData = chartData.flatMap((item, i) => [
       {
-        label: formattedLabels[i],  // e.g. 'Mon', 'Tue', etc. — use formattedLabels here
+        label: formattedLabels[i],
         value: item.resist,
         frontColor: '#16a34a',
       },
       {
-        label: '',  // no label on gaveIn bars
+        label: '',
         value: item.gaveIn,
         frontColor: '#ef4444',
       },
     ]);
-  }
-  else {
+  } else {
     chartBarData = chartData.map((item, index) => ({
       label: formattedLabels[index],
       value: item.total,
@@ -270,6 +268,9 @@ export default function StatsScreen({ navigation }: any) {
     }));
   }
 
+  const chartMaxValue = Math.max(...chartBarData.map((d) => d?.value ?? 0), 1);
+
+  // Tooltip helper
   const getTooltipValue = (index: number, type: 'resist' | 'gaveIn' | 'total') => {
     if (view === 'weekly') {
       const dateIndex = Math.floor(index / 2);
@@ -282,6 +283,36 @@ export default function StatsScreen({ navigation }: any) {
     return null;
   };
 
+  // Determine which bar-group to focus
+  function getCurrentIndex() {
+    const today = new Date();
+    if (view === 'weekly') return today.getDay();                                 // 0..6
+    if (view === 'monthly') return Math.max(0, Math.ceil(today.getDate() / 7) - 1); // 0..(weeks-1)
+    if (view === 'all') return today.getMonth();                                  // 0..11
+    return 0;
+  }
+
+  // Auto-center scroll
+  useEffect(() => {
+    if (!chartData.length) return;
+
+    const indexRaw = getCurrentIndex();
+    const groupsCount = view === 'weekly' ? chartData.length : chartData.length; // groups = days/weeks/months
+    const index = Math.min(Math.max(indexRaw, 0), Math.max(groupsCount - 1, 0));
+
+    const groupWidth = view === 'weekly' ? 2 * barWidth + spacing : barWidth + spacing;
+
+    // Visible width for the scrollable chart area (screen minus paddings and fixed y-axis)
+    const visibleChartWidth =
+      windowWidth - (OUTER_PADDING * 2) - (CARD_PADDING * 2) - Y_AXIS_LABEL_WIDTH;
+
+    const scrollX = index * groupWidth - visibleChartWidth / 2 + groupWidth / 2;
+
+    setTimeout(() => {
+      scrollRef.current?.scrollTo({ x: Math.max(scrollX, 0), animated: true });
+    }, 80);
+  }, [view, chartData, windowWidth, barWidth, spacing]);
+
   if (loading) {
     return (
       <SafeAreaView
@@ -293,6 +324,12 @@ export default function StatsScreen({ navigation }: any) {
     );
   }
 
+  // Y-axis tick labels to match NO_OF_SECTIONS & chartMaxValue
+  const yTicks = Array.from({ length: NO_OF_SECTIONS + 1 }, (_, i) => {
+    const v = Math.round((chartMaxValue * (NO_OF_SECTIONS - i)) / NO_OF_SECTIONS);
+    return v;
+  });
+
   return (
     <SafeAreaView className="flex-1" style={{ backgroundColor: colors.background }}>
       {/* Title */}
@@ -303,7 +340,7 @@ export default function StatsScreen({ navigation }: any) {
       </View>
 
       <ScrollView
-        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 20, flexGrow: 1 }}
+        contentContainerStyle={{ paddingHorizontal: OUTER_PADDING, paddingBottom: 20, flexGrow: 1 }}
         showsVerticalScrollIndicator={false}
       >
         {/* View toggles */}
@@ -381,83 +418,113 @@ export default function StatsScreen({ navigation }: any) {
         </View>
 
         {/* Chart container */}
-        <View
-          className="bg-white p-5 rounded-xl shadow"
-          style={{ minWidth: viewportWidth }}
-        >
+        <View className="bg-white p-5 rounded-xl shadow">
           <Text className="text-lg font-semibold text-center mb-4 text-gray-800">
             {view === 'weekly' ? 'Resist (green) vs Gave In (red)' : 'Total Cravings'}
           </Text>
 
-          <BarChart
-  data={chartBarData}
-  barWidth={baseBarWidth}
-  spacing={view === 'monthly' ? baseSpacing * 2 : baseSpacing}
-  noOfSections={4}
-  maxValue={Math.max(...chartBarData.map((d) => d.value), 1)}
-  yAxisTextStyle={{ color: '#666', fontSize: 12 }}
-  xAxisLabelTextStyle={{ color: '#444', fontSize: 11 }}
-  xAxisLabelTextRotate={view === 'weekly' ? -45 : 0}
-  isAnimated
-  initialSpacing={0} // ✅ FIX: removes gap between Y-axis and first bar
-  endSpacing={0}     // ✅ Optional: removes gap after last bar
-  yAxisLabelWidth={40} // ✅ Ensures labels fit without pushing bars
-  showVerticalLines={false}
-  hideDataPoints
-            onPress={(index) => {
-              setTooltipIndex(index);
-              if (view === 'weekly') {
-                setTooltipType(index % 2 === 0 ? 'resist' : 'gaveIn');
-              } else {
-                setTooltipType('total');
-              }
-            }}
-            renderTooltip={(index) => {
-              if (tooltipIndex !== index) return null;
-              if (view === 'weekly') {
-                if (!tooltipType) return null;
-                const val = getTooltipValue(index, tooltipType);
-                return (
-                  <View
-                    style={{
-                      padding: 6,
-                      backgroundColor: 'rgba(0,0,0,0.7)',
-                      borderRadius: 6,
-                      position: 'absolute',
-                      top: -40,
-                      left: -10,
-                    }}
-                  >
-                    <Text style={{ color: 'white', fontWeight: 'bold' }}>
-                      {tooltipType === 'resist' ? 'Resist' : 'Gave In'}: {val}
-                    </Text>
-                  </View>
-                );
-              } else {
-                const val = getTooltipValue(index, 'total');
-                return (
-                  <View
-                    style={{
-                      padding: 6,
-                      backgroundColor: 'rgba(0,0,0,0.7)',
-                      borderRadius: 6,
-                      position: 'absolute',
-                      top: -40,
-                      left: -10,
-                    }}
-                  >
-                    <Text style={{ color: 'white', fontWeight: 'bold' }}>Total: {val}</Text>
-                  </View>
-                );
-              }
-            }}
-            xAxisLabelTextFormatter={(label: string, index: number) => {
-              if (view === 'weekly') {
-                return formattedLabels[index] || '';
-              }
-              return label;
-            }}
-          />
+          {/* Row: Fixed Y-axis labels + Scrollable bars */}
+          <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
+            {/* Fixed Y-axis labels */}
+            <View
+              style={{
+                width: Y_AXIS_LABEL_WIDTH,
+                height: CHART_HEIGHT,
+                justifyContent: 'space-between',
+                paddingRight: 6,
+              }}
+            >
+              {yTicks.map((t, i) => (
+                <Text key={i} style={{ color: '#666', fontSize: 12, textAlign: 'right' }}>
+                  {t}
+                </Text>
+              ))}
+            </View>
+
+            {/* Scrollable bars */}
+            <ScrollView
+              ref={scrollRef}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={{ paddingBottom: 8 }}
+            >
+              <BarChart
+                data={chartBarData}
+                height={CHART_HEIGHT}
+                barWidth={barWidth}
+                spacing={spacing}
+                noOfSections={NO_OF_SECTIONS}
+                maxValue={chartMaxValue}
+                // Hide built-in Y-axis text (we render our own)
+                hideYAxisText
+                yAxisLabelWidth={0}
+                showVerticalLines={false}
+                // Typography
+                yAxisTextStyle={{ color: '#666', fontSize: 12 }}
+                xAxisLabelTextStyle={{ color: '#444', fontSize: 11 }}
+                xAxisLabelTextRotate={view === 'weekly' ? -45 : 0}
+                // Edge spacing
+                initialSpacing={0}
+                endSpacing={0}
+                // Animation & interactions
+                isAnimated
+                onPress={(index) => {
+                  setTooltipIndex(index);
+                  if (view === 'weekly') {
+                    setTooltipType(index % 2 === 0 ? 'resist' : 'gaveIn');
+                  } else {
+                    setTooltipType('total');
+                  }
+                }}
+                renderTooltip={(index) => {
+                  if (tooltipIndex !== index) return null;
+                  if (view === 'weekly') {
+                    if (!tooltipType) return null;
+                    const val = getTooltipValue(index, tooltipType);
+                    return (
+                      <View
+                        style={{
+                          padding: 6,
+                          backgroundColor: 'rgba(0,0,0,0.7)',
+                          borderRadius: 6,
+                          position: 'absolute',
+                          top: -40,
+                          left: -10,
+                        }}
+                      >
+                        <Text style={{ color: 'white', fontWeight: 'bold' }}>
+                          {tooltipType === 'resist' ? 'Resist' : 'Gave In'}: {val}
+                        </Text>
+                      </View>
+                    );
+                  } else {
+                    const val = getTooltipValue(index, 'total');
+                    return (
+                      <View
+                        style={{
+                          padding: 6,
+                          backgroundColor: 'rgba(0,0,0,0.7)',
+                          borderRadius: 6,
+                          position: 'absolute',
+                          top: -40,
+                          left: -10,
+                        }}
+                      >
+                        <Text style={{ color: 'white', fontWeight: 'bold' }}>Total: {val}</Text>
+                      </View>
+                    );
+                  }
+                }}
+                xAxisLabelTextFormatter={(label: string, index: number) => {
+                  if (view === 'weekly') {
+                    // keep your weekly labels behavior
+                    return formattedLabels[index] || '';
+                  }
+                  return label;
+                }}
+              />
+            </ScrollView>
+          </View>
         </View>
       </ScrollView>
     </SafeAreaView>

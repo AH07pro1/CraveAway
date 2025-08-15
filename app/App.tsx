@@ -1,25 +1,25 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { ClerkProvider, SignedIn, SignedOut, useAuth } from '@clerk/clerk-expo';
+import { ClerkProvider, useAuth } from '@clerk/clerk-expo';
 import * as SecureStore from 'expo-secure-store';
 import { NavigationContainer } from '@react-navigation/native';
-import Navigation from './navigation/Navigation';
-import AuthStack from './navigation/AuthStack';
-import { VoiceProvider } from './context/VoiceContext';
-import { Platform } from 'react-native';
-import OnboardingOrPaywallNavigator from './navigation/OnboardingOrPaywallNavigator';
-import '../global.css';
-import { ActivityIndicator } from 'react-native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { ActivityIndicator, Platform } from 'react-native';
 import Purchases from 'react-native-purchases';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import RootNavigator from './navigation/Navigation';
-import InitialNavigator from './navigation/InitialNavigator';
-import { AppStateProvider, useAppState } from './context/AppStateContext';
-import { OnboardingProvider } from './context/OnBoardingContext';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
+
+import Navigation from './navigation/Navigation';
+import AuthStack from './navigation/AuthStack';
+import OnboardingOrPaywallNavigator from './navigation/OnboardingOrPaywallNavigator';
 import OnboardingScreen from './screens/OnBoardingScreen';
 import PaywallScreen from './screens/PaywallScreen';
 import Tabs from './navigation/Tabs';
+import { AppStateProvider, useAppState } from './context/AppStateContext';
+import { OnboardingProvider } from './context/OnBoardingContext';
+import { VoiceProvider } from './context/VoiceContext';
+
+import '../global.css';
+
 const REVENUECAT_API_KEY = Platform.select({
   android: 'goog_lTWAjIdmkcFLTnkNzVyEhdLiVZL',
 }) ?? '';
@@ -33,34 +33,48 @@ const tokenCache = {
   },
 };
 
-const Stack = createNativeStackNavigator()
+const Stack = createNativeStackNavigator();
+
 function NavigatorWrapper() {
-  const { isLoading, hasOnboarded, hasPaid, isSignedIn } = useAppState();
-const { isLoaded } = useAuth(); // Add this here
+  const { isLoading, hasOnboarded, hasPaid, isSignedIn, setHasPaid } = useAppState();
+  const { isLoaded } = useAuth();
 
-if (isLoading || !isLoaded) {
-  return <ActivityIndicator size="large" style={{ flex: 1 }} />;
-}
+  // --- RevenueCat subscription check ---
+  useEffect(() => {
+    async function checkSubscriptionStatus() {
+      try {
+        const customerInfo = await Purchases.getCustomerInfo();
+        const isPro = !!customerInfo.entitlements.active['Monthly Membership'];
+        await AsyncStorage.setItem('hasPaid', isPro ? 'true' : 'false');
+        setHasPaid(isPro);
+      } catch (error) {
+        console.warn('Failed to fetch subscription status:', error);
+      }
+    }
 
+    checkSubscriptionStatus();
+  }, []);
 
-  const Stack = createNativeStackNavigator();
+  if (isLoading || !isLoaded) {
+    return <ActivityIndicator size="large" style={{ flex: 1 }} />;
+  }
 
   let screenToRender: React.ComponentType<any> = OnboardingScreen;
   let screenName = 'Onboarding';
 
   if (!hasOnboarded) {
-  screenName = 'Onboarding';
-  screenToRender = OnboardingScreen;
-} else if (!hasPaid) {
-  screenName = 'Paywall';
-  screenToRender = PaywallScreen;
-} else if (!isSignedIn) {
-  screenName = 'AuthStack';
-  screenToRender = AuthStack;
-} else {
-  screenName = 'Tabs';
-  screenToRender = Tabs;
-}
+    screenName = 'Onboarding';
+    screenToRender = OnboardingScreen;
+  } else if (!hasPaid) {
+    screenName = 'Paywall';
+    screenToRender = PaywallScreen;
+  } else if (!isSignedIn) {
+    screenName = 'AuthStack';
+    screenToRender = AuthStack;
+  } else {
+    screenName = 'Tabs';
+    screenToRender = Tabs;
+  }
 
   console.log('🚀 Navigator launching:', screenName);
 
@@ -74,6 +88,11 @@ if (isLoading || !isLoaded) {
 }
 
 export default function App() {
+  useEffect(() => {
+    Purchases.setDebugLogsEnabled(true);
+    Purchases.configure({ apiKey: REVENUECAT_API_KEY });
+  }, []);
+
   return (
     <ClerkProvider
       publishableKey="pk_test_bGl2ZS13aGFsZS0xMy5jbGVyay5hY2NvdW50cy5kZXYk"
@@ -81,14 +100,14 @@ export default function App() {
       proxyUrl="https://CraveAway.expo.dev"
     >
       <OnboardingProvider>
-    <AppStateProvider>
-      <VoiceProvider>
-        <GestureHandlerRootView style={{ flex: 1 }}>
-          <NavigatorWrapper />
-        </GestureHandlerRootView>
-      </VoiceProvider>
-    </AppStateProvider>
-  </OnboardingProvider>
+        <AppStateProvider>
+          <VoiceProvider>
+            <GestureHandlerRootView style={{ flex: 1 }}>
+              <NavigatorWrapper />
+            </GestureHandlerRootView>
+          </VoiceProvider>
+        </AppStateProvider>
+      </OnboardingProvider>
     </ClerkProvider>
   );
 }

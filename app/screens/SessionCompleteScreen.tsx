@@ -1,18 +1,29 @@
-import React, { useEffect, useState } from "react";
-import { View, Text, Pressable } from "react-native";
+import React, { useEffect, useState, useRef } from "react";
+import {
+  View,
+  Text,
+  Pressable,
+  Animated,
+  Platform,
+} from "react-native";
 import colors from "../utils/colors";
-import { useUser } from '@clerk/clerk-expo';
+import { useUser } from "@clerk/clerk-expo";
 import { API_URL } from "../config";
+import { LinearGradient } from "expo-linear-gradient";
+import * as Haptics from "expo-haptics";
+import ConfettiCannon from "react-native-confetti-cannon";
+
 export default function SessionCompleteScreen({ route, navigation }: any) {
-  const { user } = useUser(); // Clerk user
+  const { user } = useUser();
   const { timeSpent = 0 } = route.params || {};
   const seconds = Number(timeSpent) || 0;
-const [showXPReward, setShowXPReward] = useState(false);
-const [xpGained, setXpGained] = useState<number | null>(null);
 
+  const [showXPReward, setShowXPReward] = useState(false);
+  const [xpGained, setXpGained] = useState<number | null>(null);
+  const xpScale = useRef(new Animated.Value(0)).current;
+  const confettiRef = useRef<any>(null);
 
-
-  // Display format: if >= 60s, show minutes & seconds, else show seconds
+  // Format time display
   let displayTime = "";
   if (seconds < 60) {
     displayTime = `${seconds} second${seconds !== 1 ? "s" : ""}`;
@@ -23,91 +34,103 @@ const [xpGained, setXpGained] = useState<number | null>(null);
     if (secs > 0) displayTime += ` and ${secs} second${secs !== 1 ? "s" : ""}`;
   }
 
-   useEffect(() => {
+  useEffect(() => {
     const sendXP = async () => {
-  try {
-    const response = await fetch(`${API_URL}/api/session-complete`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        userId: user?.id,
-        timeSpent: seconds,
-      }),
-    });
+      try {
+        const response = await fetch(`${API_URL}/api/session-complete`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ userId: user?.id, timeSpent: seconds }),
+        });
 
-    const data = await response.json();
-console.log("XP updated:", data);
+        const data = await response.json();
+        setXpGained(data.xpGained);
+        setShowXPReward(true);
 
-setXpGained(data.xpGained); // ✅ update state
-setShowXPReward(true);
+        // Haptic feedback
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
-setTimeout(() => {
-  setShowXPReward(false);
-}, 2000);
+        // Animate XP popup
+        Animated.spring(xpScale, { toValue: 1, useNativeDriver: true }).start();
 
+        // Fire confetti
+        confettiRef.current?.start();
 
-  } catch (err) {
-    console.error("XP update failed:", err);
-  }
-};
+        setTimeout(() => {
+          Animated.timing(xpScale, { toValue: 0, duration: 300, useNativeDriver: true }).start();
+          setShowXPReward(false);
+        }, 2000);
+      } catch (err) {
+        console.error("XP update failed:", err);
+      }
+    };
 
-
-    if (user?.id && seconds > 0) {
-      sendXP();
-    }
+    if (user?.id && seconds > 0) sendXP();
   }, [user, seconds]);
 
   return (
-    <View
-      className="flex-1 justify-center items-center px-6"
-      style={{ backgroundColor: colors.background }}
+    <LinearGradient
+      colors={["#D4EDFF", "#FFFFFF"]}
+      style={{ flex: 1, justifyContent: "center", alignItems: "center", padding: 24 }}
     >
+      {/* Confetti */}
+      <ConfettiCannon ref={confettiRef} count={50} origin={{ x: -10, y: 0 }} fadeOut />
+
+      {/* XP Reward Popup */}
       {showXPReward && (
-  <View
-    className="absolute top-20 bg-[#FFD700] px-6 py-3 rounded-full shadow-lg"
-    style={{
-      zIndex: 999,
-      elevation: 10,
-      borderWidth: 1,
-      borderColor: "#FFF3B0",
-    }}
-  >
-   <Text className="text-lg font-bold text-center text-white">
-  +{xpGained ?? "?"} XP!
-</Text>
+        <Animated.View
+          style={{
+            transform: [{ scale: xpScale }],
+            position: "absolute",
+            top: 80,
+            backgroundColor: "#FFD700",
+            paddingHorizontal: 24,
+            paddingVertical: 12,
+            borderRadius: 999,
+            shadowColor: "#000",
+            shadowOpacity: 0.3,
+            zIndex: 999,
+            alignSelf: "center",
+            borderWidth: 1,
+            borderColor: "#FFF3B0",
+          }}
+        >
+          <Text style={{ fontWeight: "700", color: "white", fontSize: 18, textAlign: "center" }}>
+            +{xpGained ?? "?"} XP!
+          </Text>
+        </Animated.View>
+      )}
 
-  </View>
-)}
-
-      <Text
-        className="text-2xl font-semibold mb-4 text-center"
-        style={{ color: colors.primary }}
-      >
+      {/* Session Completion Info */}
+      <Text style={{ fontSize: 28, fontWeight: "700", color: colors.primary, textAlign: "center", marginBottom: 12 }}>
         Session Complete 🌿
       </Text>
-      <Text
-        className="text-lg italic mb-6 text-center"
-        style={{ color: colors.textMain }}
-      >
-        You stayed for {displayTime} — great job!
+      <Text style={{ fontSize: 20, textAlign: "center", fontWeight: "600", color: colors.textMain, marginBottom: 16 }}>
+        You stayed for{" "}
+        <Text style={{ fontWeight: "900", color: colors.primary }}>{displayTime}</Text> — great job!
       </Text>
-      <Text
-        className="text-base mb-10 text-center"
-        style={{ color: colors.textMain }}
-      >
+      <Text style={{ fontSize: 16, textAlign: "center", color: colors.textMain, marginBottom: 24 }}>
         Remember to be gentle with yourself and keep practicing.
       </Text>
+
+      {/* Continue Button */}
       <Pressable
-        className="px-10 py-3 rounded-full shadow"
-        style={{ backgroundColor: colors.primary }}
+        style={{
+          paddingVertical: 14,
+          paddingHorizontal: 32,
+          borderRadius: 999,
+          backgroundColor: colors.primary,
+          shadowColor: "#000",
+          shadowOpacity: 0.2,
+          shadowRadius: 6,
+          elevation: 4,
+        }}
         onPress={() => navigation.navigate("CreateCravingForm")}
       >
-        <Text className="text-white text-lg font-semibold">Continue</Text>
+        <Text style={{ color: "white", fontWeight: "700", fontSize: 18 }}>Continue</Text>
       </Pressable>
-    </View>
+
+     
+    </LinearGradient>
   );
 }
-
-

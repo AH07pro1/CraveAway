@@ -18,6 +18,7 @@ import { useAppState } from '../context/AppStateContext';
 import { API_URL } from '../config';
 import { useUser } from '@clerk/clerk-expo';
 import { useOnboarding } from '../context/OnBoardingContext';
+import Popup from './auth/components/Popup';
 
 const steps = [
   { type: 'intro', title: 'Welcome to CraveAway', description: 'Let’s help you take control of your cravings.' },
@@ -45,6 +46,13 @@ const steps = [
 export default function OnboardingScreen({ navigation }: any) {
   const { setHasOnboarded } = useAppState();
   const [stepIndex, setStepIndex] = useState(0);
+const [popupVisible, setPopupVisible] = useState(false);
+const [popupTitle, setPopupTitle] = useState('');
+const [popupMessage, setPopupMessage] = useState('');
+const [popupConfirm, setPopupConfirm] = useState<() => void>(() => {});
+const [popupCancel, setPopupCancel] = useState<() => void | undefined>(() => undefined);
+const [popupConfirmText, setPopupConfirmText] = useState('Confirm');
+const [popupCancelText, setPopupCancelText] = useState('Cancel');
 
   // Answers for existing questions
   const [answers, setAnswers] = useState({
@@ -64,6 +72,22 @@ const { user } = useUser();
 const { onboardingData, setOnboardingData } = useOnboarding();
 
   const currentStep = steps[stepIndex];
+const showPopup = (
+  title: string,
+  message: string,
+  onConfirm: () => void,
+  onCancel?: () => void,
+  confirmText = 'Confirm',
+  cancelText = 'Cancel'
+) => {
+  setPopupTitle(title);
+  setPopupMessage(message);
+  setPopupConfirm(() => onConfirm);
+  setPopupCancel(() => onCancel);
+  setPopupConfirmText(confirmText);
+  setPopupCancelText(cancelText);
+  setPopupVisible(true);
+};
 
   // Handle selecting options in questions
   const handleOptionSelect = (option: string) => {
@@ -98,7 +122,12 @@ const { onboardingData, setOnboardingData } = useOnboarding();
     (async () => {
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Camera permission is required to take your photo.');
+        showPopup(
+  'Camera Permission Required',
+  'Camera permission is required to take your photo.',
+  () => setPopupVisible(false)
+);
+
       }
     })();
   }, []);
@@ -117,7 +146,12 @@ const { onboardingData, setOnboardingData } = useOnboarding();
     if (status !== 'granted') {
       const { status: newStatus } = await ImagePicker.requestCameraPermissionsAsync();
       if (newStatus !== 'granted') {
-        Alert.alert('Permission denied', 'Camera access is required to take your photo.');
+       showPopup(
+  'Permission Denied',
+  'Camera access is required to take your photo.',
+  () => setPopupVisible(false)
+);
+
         return false;
       }
     }
@@ -141,7 +175,12 @@ const pickImage = async () => {
     }
   } catch (e) {
     const errorMessage = (e instanceof Error && e.message) ? e.message : 'Something went wrong taking the photo.';
-    Alert.alert('Error', errorMessage);
+    showPopup(
+  'Error',
+  errorMessage,
+  () => setPopupVisible(false)
+);
+
   }
 };
 
@@ -177,15 +216,30 @@ const saveOnboardingData = async () => {
     // Validate steps
 
     if (currentStep.type === 'photo' && !photoUri) {
-      // Alert.alert('Please take your Day 1 photo to continue.');
-      // return;
-    }
+  showPopup(
+    'Photo Required',
+    'Please take your Day 1 photo to continue.',
+    () => setPopupVisible(false)
+  );
+  return; // stop advancing
+}
+
     if (currentStep.type === 'signature' && !signature) {
-      Alert.alert('Please provide your signature to continue.');
+      showPopup(
+  'Signature Required',
+  'Please provide your signature to continue.',
+  () => setPopupVisible(false)
+);
+
       return;
     }
     if (currentStep.type === 'message' && message.trim().length === 0) {
-      Alert.alert('Please enter a personal message to continue.');
+     showPopup(
+  'Message Required',
+  'Please enter a personal message to continue.',
+  () => setPopupVisible(false)
+);
+
       return;
     }
 if (currentStep.type === 'message') {
@@ -193,7 +247,15 @@ if (currentStep.type === 'message') {
     await saveOnboardingData(); 
     await AsyncStorage.setItem('hasOnboarded', 'true');
     setHasOnboarded(true);
-    Alert.alert('Thank you for committing!');
+   showPopup(
+  'Thank You!',
+  'Thank you for committing!',
+  () => {
+    setPopupVisible(false);
+    navigation.navigate('Paywall');
+  }
+);
+
     navigation.navigate('Paywall');
   } catch (error) {
     console.warn('Failed to save onboarding flag', error);
@@ -226,50 +288,67 @@ if (stepIndex >= steps.length - 1) {
         // Save or send user inputs here (optional)
         // e.g. AsyncStorage.setItem('onboardingData', JSON.stringify({ answers, photoUri, signature, message }));
 
-        Alert.alert('Thank you for committing!');
+         showPopup(
+  'Thank You!',
+  'Thank you for committing!',
+  () => {
+    setPopupVisible(false);
+    navigation.navigate('Paywall');
+  }
 
-        // Navigate to Paywall
-        navigation.navigate('Paywall');
-      } catch (error) {
+
+      )} catch (error) {
         console.warn('Failed to save onboarding flag', error);
       }
     }
   };
 
   // Skip confirmation helper
-  const confirmSkip = (stepName: string) => {
-    Alert.alert(
-      `Skip ${stepName}?`,
-      `This step helps you commit to your journey. Are you sure you want to skip?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Skip',
-          style: 'destructive',
-          onPress: () => setStepIndex(stepIndex + 1),
-        },
-      ]
-    );
-  };
+const confirmSkip = (stepName: string) => {
+  showPopup(
+    `Skip ${stepName}?`,
+    `This step helps you commit to your journey. Are you sure you want to skip?`,
+    () => {
+      setStepIndex(stepIndex + 1); 
+      setPopupVisible(false);
+    },
+    () => setPopupVisible(false),
+    'Skip',
+    'Cancel'
+  );
+};
+
 
   return (
     <KeyboardAvoidingView
       style={{ flex: 1, backgroundColor: colors.background, padding: 24 }}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
+      <Popup
+  visible={popupVisible}
+  title={popupTitle}
+  message={popupMessage}
+  onConfirm={popupConfirm}
+  onCancel={popupCancel}
+  confirmText={popupConfirmText}
+  cancelText={popupCancelText}
+/>
       <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}>
         {/* Title */}
-        <Text
-          style={{
-            fontSize: 28,
-            fontWeight: '800',
-            color: colors.primary,
-            marginBottom: 24,
-            textAlign: 'center',
-          }}
-        >
-          {currentStep.title}
-        </Text>
+      {/* Title */}
+{currentStep.type !== 'signature' && currentStep.type !== 'photo' && (
+  <Text
+    style={{
+      fontSize: 28,
+      fontWeight: '800',
+      color: colors.primary,
+      marginBottom: 24,
+      textAlign: 'center',
+    }}
+  >
+    {currentStep.title}
+  </Text>
+)}
 
         {/* Step content rendering */}
         {/* Intro & Text */}
@@ -468,68 +547,120 @@ if (stepIndex >= steps.length - 1) {
         )}
 
         {/* New Signature Step */}
-        {currentStep.type === 'signature' && (
-          <View style={{ flex: 1 }}>
-            <View
-              style={{ height: 320, borderWidth: 1, borderColor: colors.border, borderRadius: 20, overflow: 'hidden' }}
-            >
-              <SignatureCanvas
-  ref={signatureRef}
-  onOK={handleSignature}
-  onEnd={() => signatureRef.current?.readSignature()}
-  webStyle={`.m-signature-pad--footer {display: none; margin: 0;}`}
-  descriptionText="Sign above"
-/>
-
-            </View>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 16 }}>
-              <TouchableOpacity
-                onPress={clearSignature}
-                style={{
-                  paddingVertical: 12,
-                  paddingHorizontal: 30,
-                  backgroundColor: colors.accentLight,
-                  borderRadius: 20,
-                  alignItems: 'center',
-                }}
-              >
-                <Text style={{ color: colors.textSecondary, fontWeight: '600' }}>Clear</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={handleNext}
-                style={{
-                  paddingVertical: 12,
-                  paddingHorizontal: 30,
-                  backgroundColor: colors.primary,
-                  borderRadius: 20,
-                  alignItems: 'center',
-                }}
-              >
-                <Text style={{ color: 'white', fontWeight: '700' }}>Continue</Text>
-              </TouchableOpacity>
-            </View>
-
-            
-            {!committed && (
-  <TouchableOpacity
-    onPress={() => confirmSkip('Signature')}
-    style={{
-      paddingVertical: 14,
-      paddingHorizontal: 40,
-      borderRadius: 30,
-      borderWidth: 1,
-      borderColor: colors.primary,
-      alignItems: 'center',
-      alignSelf: 'center',
-      marginTop: 4,
+        {/* Signature Step */}
+{currentStep.type === 'signature' && (
+  <ScrollView
+    contentContainerStyle={{
+      flexGrow: 1,
+      justifyContent: 'center',
+      paddingVertical: 40,
+      paddingHorizontal: 24,
     }}
   >
-    <Text style={{ color: colors.primary, fontWeight: '700', fontSize: 18 }}>Skip</Text>
-  </TouchableOpacity>
+    <View style={{ alignItems: 'center' }}>
+      <Text
+        style={{
+          fontSize: 25,
+          fontWeight: '800',
+          color: colors.primary,
+          marginBottom: 24,
+          textAlign: 'center',
+        }}
+      >
+        {currentStep.title}
+      </Text>
+
+      <View
+        style={{
+          height: 320,
+          borderWidth: 1,
+          borderColor: colors.border,
+          borderRadius: 20,
+          overflow: 'hidden',
+          marginBottom: 24,
+          width: '100%',
+        }}
+      >
+        <SignatureCanvas
+          ref={signatureRef}
+          onOK={handleSignature}
+          onEnd={() => signatureRef.current?.readSignature()}
+          webStyle={`.m-signature-pad--footer {display: none; margin: 0;}`}
+          descriptionText="Sign above"
+        />
+      </View>
+
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', width: '100%', marginBottom: 16 }}>
+        <TouchableOpacity
+          onPress={clearSignature}
+          style={{
+            paddingVertical: 12,
+            paddingHorizontal: 30,
+            backgroundColor: colors.accentLight,
+            borderRadius: 20,
+            alignItems: 'center',
+          }}
+        >
+          <Text style={{ color: colors.textSecondary, fontWeight: '600' }}>Clear</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={handleNext}
+          style={{
+            paddingVertical: 12,
+            paddingHorizontal: 30,
+            backgroundColor: colors.primary,
+            borderRadius: 20,
+            alignItems: 'center',
+          }}
+        >
+          <Text style={{ color: 'white', fontWeight: '700' }}>Continue</Text>
+        </TouchableOpacity>
+      </View>
+
+      {!committed && (
+        <TouchableOpacity
+          onPress={() => confirmSkip('Signature')}
+          style={{
+            paddingVertical: 14,
+            paddingHorizontal: 40,
+            borderRadius: 30,
+            borderWidth: 1,
+            borderColor: colors.primary,
+            alignItems: 'center',
+            marginBottom: 16, // space for dots
+          }}
+        >
+          <Text style={{ color: colors.primary, fontWeight: '700', fontSize: 18 }}>Skip</Text>
+        </TouchableOpacity>
+      )}
+
+      {/* <-- Move dots here inside the signature view */}
+      <View
+        style={{
+          flexDirection: 'row',
+          justifyContent: 'center',
+          marginTop: 16,
+          gap: 8,
+        }}
+      >
+        {steps.map((_, i) => (
+          <View
+            key={i}
+            style={{
+              width: 12,
+              height: 12,
+              borderRadius: 6,
+              backgroundColor: i === stepIndex ? colors.primary : colors.border,
+              marginHorizontal: 4,
+            }}
+          />
+        ))}
+      </View>
+    </View>
+  </ScrollView>
 )}
 
-          </View>
-        )}
 
         {/* New Personal Message Step */}
         {currentStep.type === 'message' && (
@@ -593,27 +724,31 @@ if (stepIndex >= steps.length - 1) {
         )}
 
         {/* Progress Dots */}
-        <View
-          style={{
-            flexDirection: 'row',
-            justifyContent: 'center',
-            marginTop: 32,
-            gap: 8,
-          }}
-        >
-          {steps.map((_, i) => (
-            <View
-              key={i}
-              style={{
-                width: 12,
-                height: 12,
-                borderRadius: 6,
-                backgroundColor: i === stepIndex ? colors.primary : colors.border,
-                marginHorizontal: 4,
-              }}
-            />
-          ))}
-        </View>
+       {/* Progress Dots (skip on signature step) */}
+{currentStep.type !== 'signature' && (
+  <View
+    style={{
+      flexDirection: 'row',
+      justifyContent: 'center',
+      marginTop: 32,
+      gap: 8,
+    }}
+  >
+    {steps.map((_, i) => (
+      <View
+        key={i}
+        style={{
+          width: 12,
+          height: 12,
+          borderRadius: 6,
+          backgroundColor: i === stepIndex ? colors.primary : colors.border,
+          marginHorizontal: 4,
+        }}
+      />
+    ))}
+  </View>
+)}
+
       </ScrollView>
     </KeyboardAvoidingView>
   );

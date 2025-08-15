@@ -64,34 +64,39 @@ const handleGoogleSignIn = async () => {
 };
 
 
-  return (
-    <TouchableOpacity
-      onPress={handleGoogleSignIn}
-      style={{
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: '#FFF',
-        paddingVertical: 12,
-        paddingHorizontal: 20,
-        borderRadius: 4,
-        borderWidth: 1,
-        borderColor: '#DDD',
-        marginTop: 20,
-        shadowColor: '#000',
-        shadowOpacity: 0.1,
-        shadowRadius: 2,
-        elevation: 2,
+ return (
+  <TouchableOpacity
+    onPress={handleGoogleSignIn}
+    activeOpacity={0.85}
+    style={{
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: '#fff',
+      width: '100%',
+      paddingVertical: 16,
+      borderRadius: 12,
+      borderWidth: 1,
+      borderColor: '#DDD',
+      marginBottom: 20, // Increased spacing for consistency
+      shadowColor: '#000',
+      shadowOpacity: 0.08,
+      shadowRadius: 4,
+      shadowOffset: { width: 0, height: 2 },
+      elevation: 3,
+    }}
+  >
+    <Image
+      source={{
+        uri: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3c/Google_Favicon_2025.svg/1002px-Google_Favicon_2025.svg.png'
       }}
-    >
-      <Image
-        source={{
-          uri: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3c/Google_Favicon_2025.svg/1002px-Google_Favicon_2025.svg.png'
-        }}
-        style={{ width: 25, height: 25, marginRight: 10 }}
-        resizeMode="contain"
-      />
-      <Text style={{ color: '#000', fontWeight: '500' }}>Sign in with Google</Text>
-    </TouchableOpacity>
-  );
+      style={{ width: 24, height: 24, marginRight: 12 }}
+      resizeMode="contain"
+    />
+    <Text style={{ color: '#000', fontWeight: '600', fontSize: 16 }}>
+      Sign in with Google
+    </Text>
+  </TouchableOpacity>
+);
+
 }

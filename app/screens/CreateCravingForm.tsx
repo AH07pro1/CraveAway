@@ -8,16 +8,17 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  Alert,
 } from "react-native";
 import Slider from "@react-native-community/slider";
 import { Picker } from "@react-native-picker/picker";
 import colors from "../utils/colors";
 import { useUser } from "@clerk/clerk-expo";
-import { API_URL } from "../config"; // Import API_URL
+import { API_URL } from "../config";
+import Popup from "./auth/components/Popup";
 
 type CravingType = { name: string; isCustom: boolean };
 
+// StepCard component
 const StepCard = ({
   step,
   cravingTypes,
@@ -35,8 +36,11 @@ const StepCard = ({
     case 1:
       return (
         <View
-          className="bg-[#E9EBF8] rounded-2xl p-5 mb-6 shadow-md"
           style={{
+            backgroundColor: "#E9EBF8",
+            borderRadius: 24,
+            padding: 20,
+            marginBottom: 24,
             shadowColor: "#000",
             shadowOpacity: 0.1,
             shadowRadius: 8,
@@ -45,26 +49,38 @@ const StepCard = ({
           }}
         >
           <Text
-            className="text-base italic mb-1 text-center"
-            style={{ color: colors.textSecondary }}
+            style={{
+              color: colors.textSecondary,
+              fontSize: 14,
+              fontStyle: "italic",
+              textAlign: "center",
+              marginBottom: 4,
+            }}
           >
             What kind of craving was it? 🍃
           </Text>
           <Text
-            className="text-lg font-semibold mb-2 text-center"
-            style={{ color: colors.textMain }}
+            style={{
+              color: colors.textMain,
+              fontSize: 18,
+              fontWeight: "600",
+              textAlign: "center",
+              marginBottom: 8,
+            }}
           >
             Type
           </Text>
           <View
-            className="rounded-xl overflow-hidden border"
             style={{
+              borderRadius: 16,
+              overflow: "hidden",
+              borderWidth: 1,
               borderColor: colors.border,
               backgroundColor: colors.background,
             }}
           >
             {cravingTypes.length === 0 ? (
-              <Text className="text-center text-gray-400 py-3">
+              <Text style={{ textAlign: "center", color: "#aaa", paddingVertical: 12 }}>
                 Loading types...
               </Text>
             ) : (
@@ -77,11 +93,9 @@ const StepCard = ({
                 {cravingTypes.map((item) => (
                   <Picker.Item
                     key={item.name}
-                    label={
-                      item.name.charAt(0).toUpperCase() +
-                      item.name.slice(1) +
-                      (item.isCustom ? " (Custom)" : "")
-                    }
+                    label={`${item.name.charAt(0).toUpperCase()}${item.name.slice(1)}${
+                      item.isCustom ? " (Custom)" : ""
+                    }`}
                     value={item.name}
                   />
                 ))}
@@ -93,8 +107,11 @@ const StepCard = ({
     case 2:
       return (
         <View
-          className="bg-[#E9EBF8] rounded-2xl p-5 mb-6 shadow-md"
           style={{
+            backgroundColor: "#E9EBF8",
+            borderRadius: 24,
+            padding: 20,
+            marginBottom: 24,
             shadowColor: "#000",
             shadowOpacity: 0.1,
             shadowRadius: 8,
@@ -103,14 +120,24 @@ const StepCard = ({
           }}
         >
           <Text
-            className="text-base italic mb-1 text-center"
-            style={{ color: colors.textSecondary }}
+            style={{
+              color: colors.textSecondary,
+              fontSize: 14,
+              fontStyle: "italic",
+              textAlign: "center",
+              marginBottom: 4,
+            }}
           >
             How strong was the craving? 🔥
           </Text>
           <Text
-            className="text-lg font-semibold mb-3 text-center"
-            style={{ color: colors.textMain }}
+            style={{
+              color: colors.textMain,
+              fontSize: 18,
+              fontWeight: "600",
+              textAlign: "center",
+              marginBottom: 12,
+            }}
           >
             Intensity: {intensity}
           </Text>
@@ -130,8 +157,11 @@ const StepCard = ({
     case 3:
       return (
         <View
-          className="bg-[#E9EBF8] rounded-2xl p-5 mb-6 shadow-md"
           style={{
+            backgroundColor: "#E9EBF8",
+            borderRadius: 24,
+            padding: 20,
+            marginBottom: 24,
             shadowColor: "#000",
             shadowOpacity: 0.1,
             shadowRadius: 8,
@@ -140,14 +170,23 @@ const StepCard = ({
           }}
         >
           <Text
-            className="text-base italic mb-1 text-center"
-            style={{ color: colors.textSecondary }}
+            style={{
+              color: colors.textSecondary,
+              fontSize: 14,
+              fontStyle: "italic",
+              textAlign: "center",
+              marginBottom: 4,
+            }}
           >
             What was going on around you? 🧠
           </Text>
           <Text
-            className="text-lg font-semibold mb-2"
-            style={{ color: colors.textMain }}
+            style={{
+              color: colors.textMain,
+              fontSize: 18,
+              fontWeight: "600",
+              marginBottom: 8,
+            }}
           >
             Trigger or Thoughts
           </Text>
@@ -158,13 +197,14 @@ const StepCard = ({
             placeholderTextColor={colors.textSecondary}
             multiline
             numberOfLines={4}
-            className="rounded-xl px-4 py-3"
             style={{
               borderColor: colors.border,
               backgroundColor: colors.background,
               color: colors.textMain,
               textAlignVertical: "top",
               borderWidth: 1,
+              borderRadius: 16,
+              padding: 12,
             }}
           />
         </View>
@@ -172,8 +212,14 @@ const StepCard = ({
     case 4:
       return (
         <View
-          className="bg-[#E9EBF8] rounded-2xl p-5 mb-6 shadow-md flex-row items-center justify-between"
           style={{
+            backgroundColor: "#E9EBF8",
+            borderRadius: 24,
+            padding: 20,
+            marginBottom: 24,
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
             shadowColor: "#000",
             shadowOpacity: 0.1,
             shadowRadius: 8,
@@ -183,14 +229,21 @@ const StepCard = ({
         >
           <View>
             <Text
-              className="text-base italic mb-1"
-              style={{ color: colors.textSecondary }}
+              style={{
+                color: colors.textSecondary,
+                fontSize: 14,
+                fontStyle: "italic",
+                marginBottom: 4,
+              }}
             >
               Did you give in to the craving?
             </Text>
             <Text
-              className="text-lg font-semibold"
-              style={{ color: colors.textMain }}
+              style={{
+                color: colors.textMain,
+                fontSize: 18,
+                fontWeight: "600",
+              }}
             >
               {resolved ? "No, I stayed strong 💪" : "Yes, I gave in 😞"}
             </Text>
@@ -198,18 +251,25 @@ const StepCard = ({
 
           <Pressable
             onPress={() => setResolved((prev) => !prev)}
-            className={`w-14 h-8 rounded-full ${
-              resolved ? "bg-[#4BB543]" : "bg-[#FF6B6B]"
-            }`}
             style={{
+              width: 56,
+              height: 32,
+              borderRadius: 999,
               justifyContent: "center",
+              backgroundColor: resolved ? "#4BB543" : "#FF6B6B",
               padding: 2,
             }}
           >
             <View
-              className={`w-7 h-7 bg-white rounded-full shadow-md transform ${
-                resolved ? "translate-x-6" : "translate-x-1"
-              }`}
+              style={{
+                width: 28,
+                height: 28,
+                backgroundColor: "white",
+                borderRadius: 999,
+                shadowColor: "#000",
+                shadowOpacity: 0.2,
+                transform: [{ translateX: resolved ? 24 : 4 }],
+              }}
             />
           </Pressable>
         </View>
@@ -219,6 +279,7 @@ const StepCard = ({
   }
 };
 
+// CreateCravingForm
 export default function CreateCravingForm({ navigation }: any) {
   const { user } = useUser();
 
@@ -231,7 +292,21 @@ export default function CreateCravingForm({ navigation }: any) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [xpGained, setXpGained] = useState<number | null>(null);
   const [showXPReward, setShowXPReward] = useState(false);
+
+  // Popup state
+  const [popupVisible, setPopupVisible] = useState(false);
+  const [popupTitle, setPopupTitle] = useState("");
+  const [popupMessage, setPopupMessage] = useState("");
+  const [popupConfirm, setPopupConfirm] = useState<() => void>(() => () => {});
+
   const totalSteps = 4;
+
+  const showPopup = (title: string, message: string, onConfirm?: () => void) => {
+    setPopupTitle(title);
+    setPopupMessage(message);
+    setPopupConfirm(() => onConfirm ?? (() => setPopupVisible(false)));
+    setPopupVisible(true);
+  };
 
   const isAllDefault =
     intensity === "5" &&
@@ -239,26 +314,20 @@ export default function CreateCravingForm({ navigation }: any) {
     resolved === true &&
     type === (cravingTypes.length > 0 ? cravingTypes[0].name : "");
 
-  useFocusEffect(
-    useCallback(() => {
-      setStep(1);
-    }, [])
-  );
+  useFocusEffect(useCallback(() => setStep(1), []));
 
   useEffect(() => {
     if (!user?.id) return;
 
     const fetchCravingTypes = async () => {
       try {
-        const res = await fetch(
-          `${API_URL}/api/craving-types?userId=${user.id}`
-        );
+        const res = await fetch(`${API_URL}/api/craving-types?userId=${user.id}`);
         const data: CravingType[] = await res.json();
         setCravingTypes(data);
         if (data.length > 0) setType(data[0].name);
       } catch (err) {
         console.error("Failed to fetch craving types:", err);
-        Alert.alert("Error", "Unable to load craving types.");
+        showPopup("Error", "Unable to load craving types.");
       }
     };
 
@@ -267,7 +336,7 @@ export default function CreateCravingForm({ navigation }: any) {
 
   const submitData = async () => {
     if (!user?.id) {
-      Alert.alert("Error", "User not logged in.");
+      showPopup("Error", "User not logged in.");
       return;
     }
 
@@ -275,7 +344,6 @@ export default function CreateCravingForm({ navigation }: any) {
 
     try {
       const response = await fetch(`${API_URL}/api/craving`, {
-
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -290,7 +358,7 @@ export default function CreateCravingForm({ navigation }: any) {
       if (!response.ok) {
         const errorData = await response.json();
         console.error("Server error:", errorData);
-        Alert.alert("Error", "Failed to submit craving.");
+        showPopup("Error", "Failed to submit craving.");
         return;
       }
 
@@ -316,7 +384,7 @@ export default function CreateCravingForm({ navigation }: any) {
       }
     } catch (err) {
       console.error("Network error:", err);
-      Alert.alert("Error", "Network error occurred.");
+      showPopup("Error", "Network error occurred.");
     } finally {
       setIsSubmitting(false);
     }
@@ -326,13 +394,10 @@ export default function CreateCravingForm({ navigation }: any) {
     if (isSubmitting) return;
 
     if (isAllDefault) {
-      Alert.alert(
+      showPopup(
         "Confirm submission",
         "You are submitting default values. If you're sure, please fill in some details.",
-        [
-          { text: "Cancel", style: "cancel" },
-          { text: "Submit", onPress: submitData },
-        ]
+        submitData
       );
     } else {
       submitData();
@@ -346,96 +411,131 @@ export default function CreateCravingForm({ navigation }: any) {
     >
       {showXPReward && (
         <View
-          className="absolute top-20 bg-[#FFD700] px-6 py-3 rounded-full shadow-lg"
           style={{
+            position: "absolute",
+            top: 80,
+            backgroundColor: "#FFD700",
+            paddingHorizontal: 24,
+            paddingVertical: 12,
+            borderRadius: 999,
+            shadowColor: "#000",
+            shadowOpacity: 0.3,
             zIndex: 999,
-            elevation: 10,
+            alignSelf: "center",
             borderWidth: 1,
             borderColor: "#FFF3B0",
-            alignSelf: "center",
           }}
         >
-          <Text className="text-lg font-bold text-center text-white">
+          <Text
+            style={{
+              fontWeight: "700",
+              color: "white",
+              fontSize: 18,
+              textAlign: "center",
+            }}
+          >
             +{xpGained ?? "?"} XP!
           </Text>
         </View>
       )}
 
       <ScrollView
-  keyboardShouldPersistTaps="handled"
-  contentContainerStyle={{ flexGrow: 1, paddingVertical: 48 }}
-  className="px-6"
->
-  <View style={{ flex: 1, justifyContent: "center" }}>
-    <View className="mb-8 items-center">
-      <Text
-        className="text-3xl font-extrabold mb-1 text-center"
-        style={{ color: colors.primary }}
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={{ flexGrow: 1, paddingVertical: 48, paddingHorizontal: 24 }}
       >
-        Let's log what just happened 💬
-      </Text>
-      <Text
-        className="text-base text-center"
-        style={{ color: colors.textSecondary }}
-      >
-        No pressure. Just a few quick notes to help you understand your cravings better.
-      </Text>
-    </View>
+        <View style={{ flex: 1, justifyContent: "center" }}>
+          <View style={{ marginBottom: 32, alignItems: "center" }}>
+            <Text
+              style={{
+                fontSize: 28,
+                fontWeight: "800",
+                marginBottom: 4,
+                textAlign: "center",
+                color: colors.primary,
+              }}
+            >
+              Let's log what just happened 💬
+            </Text>
+            <Text style={{ fontSize: 16, textAlign: "center", color: colors.textSecondary }}>
+              No pressure. Just a few quick notes to help you understand your cravings better.
+            </Text>
+          </View>
 
-    <StepCard
-      step={step}
-      cravingTypes={cravingTypes}
-      type={type}
-      setType={setType}
-      intensity={intensity}
-      setIntensity={setIntensity}
-      notes={notes}
-      setNotes={setNotes}
-      resolved={resolved}
-      setResolved={setResolved}
-      colors={colors}
-    />
+          <StepCard
+            step={step}
+            cravingTypes={cravingTypes}
+            type={type}
+            setType={setType}
+            intensity={intensity}
+            setIntensity={setIntensity}
+            notes={notes}
+            setNotes={setNotes}
+            resolved={resolved}
+            setResolved={setResolved}
+            colors={colors}
+          />
 
-    <View className="flex-row justify-between mt-4">
-      {step > 1 ? (
-        <Pressable
-          onPress={() => setStep(step - 1)}
-          className="rounded-3xl py-3 px-8 border border-gray-300"
-        >
-          <Text style={{ color: colors.primary, fontWeight: "600" }}>
-            Back
-          </Text>
-        </Pressable>
-      ) : (
-        <View style={{ width: 100 }} />
-      )}
+          <View style={{ flexDirection: "row", justifyContent: "space-between", marginTop: 16 }}>
+            {step > 1 ? (
+              <Pressable
+                onPress={() => setStep(step - 1)}
+                style={{
+                  borderRadius: 999,
+                  paddingVertical: 12,
+                  paddingHorizontal: 24,
+                  borderWidth: 1,
+                  borderColor: colors.border,
+                }}
+              >
+                <Text style={{ color: colors.primary, fontWeight: "600" }}>Back</Text>
+              </Pressable>
+            ) : (
+              <View style={{ width: 100 }} />
+            )}
 
-      {step < totalSteps ? (
-        <Pressable
-          onPress={() => setStep(step + 1)}
-          className="rounded-3xl py-3 px-8"
-          style={{ backgroundColor: colors.primary }}
-        >
-          <Text className="text-white font-bold">Next</Text>
-        </Pressable>
-      ) : (
-        <Pressable
-          onPress={handleSubmit}
-          disabled={isSubmitting}
-          className={`rounded-3xl py-3 px-8 ${
-            isSubmitting ? "opacity-50" : ""
-          }`}
-          style={{ backgroundColor: colors.primary }}
-        >
-          <Text className="text-white font-bold">
-            {isSubmitting ? "Saving..." : "Done! Save this moment"}
-          </Text>
-        </Pressable>
-      )}
-    </View>
-  </View>
-</ScrollView>
+            {step < totalSteps ? (
+              <Pressable
+                onPress={() => setStep(step + 1)}
+                style={{
+                  borderRadius: 999,
+                  paddingVertical: 12,
+                  paddingHorizontal: 24,
+                  backgroundColor: colors.primary,
+                }}
+              >
+                <Text style={{ color: "white", fontWeight: "700" }}>Next</Text>
+              </Pressable>
+            ) : (
+              <Pressable
+                onPress={handleSubmit}
+                disabled={isSubmitting}
+                style={{
+                  borderRadius: 999,
+                  paddingVertical: 12,
+                  paddingHorizontal: 24,
+                  backgroundColor: colors.primary,
+                  opacity: isSubmitting ? 0.5 : 1,
+                }}
+              >
+                <Text style={{ color: "white", fontWeight: "700" }}>
+                  {isSubmitting ? "Saving..." : "Done! Save this moment"}
+                </Text>
+              </Pressable>
+            )}
+          </View>
+        </View>
+      </ScrollView>
 
+      {/* Popup */}
+      <Popup
+        visible={popupVisible}
+        title={popupTitle}
+        message={popupMessage}
+        onConfirm={() => {
+          setPopupVisible(false);
+          popupConfirm();
+        }}
+      />
     </KeyboardAvoidingView>
   );
 }

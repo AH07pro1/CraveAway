@@ -43,6 +43,7 @@
     "react-dom": "19.0.0",
     "react-native": "0.79.5",
     "react-native-chart-kit": "^6.12.0",
+    "react-native-confetti-cannon": "^1.5.2",
     "react-native-gesture-handler": "~2.24.0",
     "react-native-gifted-charts": "^1.4.62",
     "react-native-linear-gradient": "^2.8.3",
@@ -53,7 +54,9 @@
     "react-native-signature-canvas": "^5.0.1",
     "react-native-svg": "15.11.2",
     "winston": "^3.17.0",
-    "zod": "^3.25.73"
+    "zod": "^3.25.73",
+    "expo-linear-gradient": "~14.1.5",
+    "expo-haptics": "~14.1.4"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
