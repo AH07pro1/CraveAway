@@ -8,20 +8,14 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
-    
-        "expo-splash-screen":
-        {
-          "backgroundColor": "#34ABFF",
-          "image": "./assets/splash-icon.png",
-
-          "imageWidth": 200
-        },
-      
+    "expo-splash-screen": {
+      "backgroundColor": "#34ABFF",
+      "image": "./assets/splash-icon.png",
+      "imageWidth": 200
+    },
     "ios": {
-      "supportsTablet": true,
-      "infoPlist": {
-        "NSCameraUsageDescription": "This app needs camera access to take your Day 1 photo."
-      }
+      "supportsTablet": true
+
     },
     "android": {
       "versionCode": 7,
@@ -29,34 +23,36 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#34ABFF"
       },
-      "permissions": ["CAMERA"],
       "edgeToEdgeEnabled": true,
       "package": "com.ah07.CraveAway"
+
     },
     "web": {
       "bundler": "metro",
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
-  "expo-secure-store",
-  [
-    "expo-build-properties",
-    {
-      "android": {
-        "permissions": ["com.android.vending.BILLING"]
-      }
-    }
-  ]
-
+      "expo-secure-store",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "permissions": ["com.android.vending.BILLING"]
+          }
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow CraveAway to access your camera"
+         
+        }
+      ]
     ],
     "extra": {
       "eas": {
         "projectId": "e24b80ab-e5c8-438b-8762-67bc0b9fb6da"
       }
     }
-
-    
-
-
   }
 }

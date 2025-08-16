@@ -105,8 +105,8 @@ export default function PaywallScreen({ navigation }: any) {
 
   return (
     <>
-      <ScrollView contentContainerStyle={{ flexGrow: 1, padding: 24, backgroundColor: colors.background }}>
-        <View style={{ alignItems: 'center', marginTop: 48, marginBottom: 28 }}>
+     <ScrollView contentContainerStyle={{ flexGrow: 1, padding: 24, backgroundColor: colors.background }}>
+  <View style={{ alignItems: 'center', marginTop: 80, marginBottom: 28 }}>
           <Text style={{ fontSize: 30, fontWeight: 'bold', color: colors.primary, textAlign: 'center', marginBottom: 8 }}>
             Try CraveAway Free
           </Text>

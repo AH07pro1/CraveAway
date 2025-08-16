@@ -20,7 +20,7 @@ export default function ProfileScreen() {
   const [onboardingPhotoUrl, setOnboardingPhotoUrl] = useState<string | null>(null);
   const [onboardingMessage, setOnboardingMessage] = useState<string | null>(null);
   const [loadingOnboarding, setLoadingOnboarding] = useState(true);
-
+const [pendingOnboarding, setPendingOnboarding] = useState<{ photoUri?: string; message?: string } | null>(null);
   // Popup state
   const [popupVisible, setPopupVisible] = useState(false);
   const [popupConfig, setPopupConfig] = useState<{
@@ -44,7 +44,7 @@ export default function ProfileScreen() {
 
     async function fetchOnboarding() {
       try {
-        const response = await fetch(`${API_URL}/api/onboarding?userId=${user.id}`);
+        const response = await fetch(`${API_URL}/api/onboarding?userId=${user?.id}`);
         if (response.ok) {
           const json = await response.json();
           if (json.success && json.data) {
@@ -61,6 +61,20 @@ export default function ProfileScreen() {
 
     fetchOnboarding();
   }, [user?.id]);
+
+  useEffect(() => {
+  async function loadPendingOnboarding() {
+    try {
+      const json = await AsyncStorage.getItem('pendingOnboarding');
+      if (json) {
+        setPendingOnboarding(JSON.parse(json));
+      }
+    } catch (err) {
+      console.warn('Failed to load pending onboarding data', err);
+    }
+  }
+  loadPendingOnboarding();
+}, []);
 
   if (!isLoaded) {
     return (
@@ -80,7 +94,11 @@ export default function ProfileScreen() {
 
   const createdDate = user.createdAt ? format(new Date(user.createdAt), 'PPP') : 'N/A';
   const lastSignInDate = user.lastSignInAt ? format(new Date(user.lastSignInAt), 'PPP p') : 'N/A';
-  const profileImageUrl = onboardingPhotoUrl && onboardingPhotoUrl.trim() !== '' ? onboardingPhotoUrl : user.imageUrl;
+const profileImageUrl =
+  pendingOnboarding?.photoUri?.trim() ||
+  onboardingPhotoUrl?.trim() ||
+  user.imageUrl;
+
 
   // --- Popup actions ---
   const showSignOutPopup = () => {
@@ -130,6 +148,9 @@ export default function ProfileScreen() {
     setPopupVisible(true);
   };
 
+  console.log("Pending onboarding photo:", pendingOnboarding);
+  console.log("Pending onboarding photo url:", onboardingPhotoUrl);
+
   return (
     <>
       <ScrollView style={{ flex: 1, backgroundColor: colors.background }} contentContainerStyle={{ padding: 24 }}>
@@ -140,7 +161,17 @@ export default function ProfileScreen() {
         {/* Profile Card */}
         <View style={{ alignItems: 'center', backgroundColor: colors.accentLight, padding: 20, borderRadius: 16, marginBottom: 24 }}>
           {profileImageUrl ? (
-            <Image source={{ uri: profileImageUrl }} style={{ width: 128, height: 128, borderRadius: 64, borderWidth: 3, borderColor: colors.primary, marginBottom: 12 }} />
+            <Image
+  source={{ uri: profileImageUrl }}
+  style={{
+    width: 128,
+    height: 128,
+    borderRadius: 64,
+    borderWidth: 3,
+    borderColor: colors.primary,
+    marginBottom: 12,
+  }}
+/>
           ) : (
             <View style={{ width: 128, height: 128, borderRadius: 64, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center', marginBottom: 12 }}>
               <Text style={{ fontSize: 48, color: 'white', fontWeight: 'bold' }}>{user.firstName?.[0] ?? 'U'}</Text>

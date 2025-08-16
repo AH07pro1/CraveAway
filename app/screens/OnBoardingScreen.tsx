@@ -9,6 +9,7 @@ import {
   ScrollView,
   Image,
   Alert,
+  Button,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import SignatureCanvas from 'react-native-signature-canvas';
@@ -19,6 +20,9 @@ import { API_URL } from '../config';
 import { useUser } from '@clerk/clerk-expo';
 import { useOnboarding } from '../context/OnBoardingContext';
 import Popup from './auth/components/Popup';
+import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
+
+import * as MediaLibrary from 'expo-media-library';
 
 const steps = [
   { type: 'intro', title: 'Welcome to CraveAway', description: 'Let’s help you take control of your cravings.' },
@@ -53,7 +57,11 @@ const [popupConfirm, setPopupConfirm] = useState<() => void>(() => {});
 const [popupCancel, setPopupCancel] = useState<() => void | undefined>(() => undefined);
 const [popupConfirmText, setPopupConfirmText] = useState('Confirm');
 const [popupCancelText, setPopupCancelText] = useState('Cancel');
-
+ const [facing, setFacing] = useState<CameraType>('back');
+  const [permission, requestPermission] = useCameraPermissions();
+  const cameraRef = useRef<CameraView>(null);
+   const [hasMediaLibraryPermission, requestMediaLibraryPermission] = MediaLibrary.usePermissions();
+   const [hasCheckedPermission, setHasCheckedPermission] = useState(false);
   // Answers for existing questions
   const [answers, setAnswers] = useState({
     habit: '',
@@ -64,13 +72,17 @@ const [popupCancelText, setPopupCancelText] = useState('Cancel');
 
   // New states for photo, signature, message
   const [photoUri, setPhotoUri] = useState<string | null>(null);
+  const [capturedPhoto, setCapturedPhoto] = useState<any>(photoUri);
+const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const [signature, setSignature] = useState<string | null>(null);
   const [message, setMessage] = useState('');
 const [committed, setCommitted] = useState(false);
 const { user } = useUser();
   const signatureRef = useRef<any>(null);
 const { onboardingData, setOnboardingData } = useOnboarding();
+const [permissionChecked, setPermissionChecked] = useState(false);
 
+const [granted, setGranted] = useState(false);
   const currentStep = steps[stepIndex];
 const showPopup = (
   title: string,
@@ -88,6 +100,21 @@ const showPopup = (
   setPopupCancelText(cancelText);
   setPopupVisible(true);
 };
+
+// if (!permission) return <View />;
+//   if (!permission.granted) {
+//     return (
+//       <View>
+//         <Text>Camera permission needed</Text>
+//         <TouchableOpacity onPress={requestPermission}>
+//           <Text>Grant Permission</Text>
+//         </TouchableOpacity>
+//       </View>
+//     );
+//   }
+
+   const toggleCameraFacing = () =>
+    setFacing(current => (current === 'back' ? 'front' : 'back'));
 
   // Handle selecting options in questions
   const handleOptionSelect = (option: string) => {
@@ -118,19 +145,12 @@ const showPopup = (
     }
   };
 
-  useEffect(() => {
-    (async () => {
-      const { status } = await ImagePicker.requestCameraPermissionsAsync();
-      if (status !== 'granted') {
-        showPopup(
-  'Camera Permission Required',
-  'Camera permission is required to take your photo.',
-  () => setPopupVisible(false)
-);
 
-      }
-    })();
-  }, []);
+// if (hasCameraPermission === null) {
+//   return <Text>Requesting camera permissions...</Text>;
+// } else if (hasCameraPermission === false) {
+//   return <Text>Camera permission not granted.</Text>;
+// }
 
   useEffect(() => {
   (async () => {
@@ -141,61 +161,113 @@ const showPopup = (
   })();
 }, []);
 
-  const checkPermissions = async () => {
-    const { status } = await ImagePicker.getCameraPermissionsAsync();
-    if (status !== 'granted') {
-      const { status: newStatus } = await ImagePicker.requestCameraPermissionsAsync();
-      if (newStatus !== 'granted') {
-       showPopup(
-  'Permission Denied',
-  'Camera access is required to take your photo.',
-  () => setPopupVisible(false)
-);
 
-        return false;
+
+
+
+
+//   const checkPermissions = async () => {
+//     const { status } = await ImagePicker.getCameraPermissionsAsync();
+//     if (status !== 'granted') {
+//       const { status: newStatus } = await ImagePicker.requestCameraPermissionsAsync();
+//       if (newStatus !== 'granted') {
+//        showPopup(
+//   'Permission Denied',
+//   'Camera access is required to take your photo.',
+//   () => setPopupVisible(false)
+// );
+
+//         return false;
+//       }
+//     }
+//     return true;
+//   };
+  const takePhoto = async () => {
+    if (cameraRef.current) {
+      try {
+        const photo = await cameraRef.current.takePictureAsync();
+        setCapturedPhoto(photo);
+      } catch (error) {
+        console.log('Error taking photo:', error);
       }
     }
-    return true;
   };
 
-  // Image picker for photo step
-const pickImage = async () => {
-  const hasPermission = await checkPermissions();
-  if (!hasPermission) return;
-
-  try {
-    const result = await ImagePicker.launchCameraAsync({
-      quality: 0.7,
-      base64: false,
-    });
-    if (!result.canceled) {
-      const uri = result.assets[0].uri;
-      setPhotoUri(uri);
-      await AsyncStorage.setItem('photoUri', uri);
+  const savePhoto = async () => {
+    if (capturedPhoto && hasMediaLibraryPermission?.granted) {
+      await MediaLibrary.saveToLibraryAsync(capturedPhoto.uri);
+    } else {
+      await requestMediaLibraryPermission();
     }
-  } catch (e) {
-    const errorMessage = (e instanceof Error && e.message) ? e.message : 'Something went wrong taking the photo.';
-    showPopup(
-  'Error',
-  errorMessage,
-  () => setPopupVisible(false)
-);
+  };
 
+if (!permission) {
+    // Permission is still loading
+    return <View />;
   }
-};
+
+  if (!permission.granted) {
+  return (
+    <View className="flex-1 justify-center items-center bg-white p-4">
+      <Text className="text-center text-lg text-gray-700 mb-4">
+        We need your permission to show the camera
+      </Text>
+      <Button onPress={requestPermission} title="Grant Permission" />
+    </View>
+  );
+}
+
+// useEffect(() => {
+//   const getPermission = async () => {
+//     const { status } = await Camera.requestCameraPermissionsAsync();
+//     setHasPermission(status === 'granted');
+//   };
+//   getPermission();
+// }, []);
+  // Image picker for photo step
+// const pickImage = async () => {
+//   const hasPermission = await checkPermissions();
+//   if (!hasPermission) return;
+
+//   try {
+//     const result = await ImagePicker.launchCameraAsync({
+//       quality: 0.7,
+//       base64: false,
+//     });
+//     if (!result.canceled) {
+//       const uri = result.assets[0].uri;
+//       setPhotoUri(uri);
+//       await AsyncStorage.setItem('photoUri', uri);
+//     }
+//   } catch (e) {
+//     const errorMessage = (e instanceof Error && e.message) ? e.message : 'Something went wrong taking the photo.';
+//     showPopup(
+//   'Error',
+//   errorMessage,
+//   () => setPopupVisible(false)
+// );
+
+//   }
+// };
 
 const saveOnboardingData = async () => {
-  console.log('Saving onboarding data to AsyncStorage:', { photoUri, message });
+  if (!capturedPhoto?.uri) return; // safety check
+
+  const dataToSave = {
+    photoUri: capturedPhoto.uri, // save only the URI
+    message,
+  };
+
+  console.log('Saving onboarding data to AsyncStorage:', dataToSave);
+
   try {
-    await AsyncStorage.setItem(
-      'pendingOnboarding',
-      JSON.stringify({ photoUri, message })
-    );
+    await AsyncStorage.setItem('pendingOnboarding', JSON.stringify(dataToSave));
     console.log('Onboarding data saved to AsyncStorage');
   } catch (err) {
     console.warn('Failed to save onboarding data to AsyncStorage', err);
   }
 };
+
 
 
 
@@ -215,15 +287,14 @@ const saveOnboardingData = async () => {
   const handleNext = async () => {
     // Validate steps
 
-    if (currentStep.type === 'photo' && !photoUri) {
+    if (currentStep.type === 'photo' && !capturedPhoto) {
   showPopup(
     'Photo Required',
     'Please take your Day 1 photo to continue.',
     () => setPopupVisible(false)
   );
-  return; // stop advancing
+  return;
 }
-
     if (currentStep.type === 'signature' && !signature) {
       showPopup(
   'Signature Required',
@@ -324,6 +395,7 @@ const confirmSkip = (stepName: string) => {
       style={{ flex: 1, backgroundColor: colors.background, padding: 24 }}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
+      
       <Popup
   visible={popupVisible}
   title={popupTitle}
@@ -476,31 +548,34 @@ const confirmSkip = (stepName: string) => {
           </View>
         )}
 
+        
+
         {/* New Photo Step */}
-        {currentStep.type === 'photo' && (
-          <View style={{ alignItems: 'center' }}>
-            {photoUri ? (
-              <Image
-                source={{ uri: photoUri }}
-                style={{ width: 220, height: 220, borderRadius: 110, marginBottom: 24 }}
-              />
-            ) : (
-              <View
-                style={{
-                  width: 220,
-                  height: 220,
-                  borderRadius: 110,
-                  backgroundColor: colors.accentLight,
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                  marginBottom: 24,
-                }}
+ {currentStep.type === 'photo' && (
+        <View style={{ alignItems: 'center' }}>
+          
+          {!capturedPhoto ? (
+            <View style={{ width: '100%', height: 300, borderRadius: 20, overflow: 'hidden', marginBottom: 16 }}>
+              <CameraView
+                ref={cameraRef}
+                style={{ flex: 1 }}
+                facing={facing}
               >
-                <Text style={{ color: colors.textSecondary }}>No photo taken yet</Text>
-              </View>
-            )}
+                <TouchableOpacity onPress={toggleCameraFacing} style={{ position: 'absolute', bottom: 20, right: 20 }}>
+                  <Text style={{ color: 'white', fontWeight: '700' }}>Flip</Text>
+                </TouchableOpacity>
+              </CameraView>
+            </View>
+          ) : (
+            <Image
+              source={{ uri: capturedPhoto.uri }}
+              style={{ width: 220, height: 220, borderRadius: 110, marginBottom: 24 }}
+            />
+          )}
+
+          {!capturedPhoto ? (
             <TouchableOpacity
-              onPress={pickImage}
+              onPress={takePhoto}
               style={{
                 backgroundColor: colors.primary,
                 paddingVertical: 14,
@@ -511,40 +586,69 @@ const confirmSkip = (stepName: string) => {
             >
               <Text style={{ color: 'white', fontWeight: '700', fontSize: 18 }}>Take Photo</Text>
             </TouchableOpacity>
+          ) : (
+            <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 12, marginBottom: 16 }}>
+              <TouchableOpacity
+                onPress={() => setCapturedPhoto(null)}
+                style={{
+                  paddingVertical: 14,
+                  paddingHorizontal: 40,
+                  backgroundColor: colors.accentLight,
+                  borderRadius: 30,
+                  alignItems: 'center',
+                }}
+              >
+                <Text style={{ fontWeight: '700', color: colors.textSecondary }}>Retake</Text>
+              </TouchableOpacity>
 
+              {hasMediaLibraryPermission?.granted && (
+                <TouchableOpacity
+                  onPress={savePhoto}
+                  style={{
+                    paddingVertical: 14,
+                    paddingHorizontal: 40,
+                    backgroundColor: colors.primary,
+                    borderRadius: 30,
+                    alignItems: 'center',
+                  }}
+                >
+                  <Text style={{ color: 'white', fontWeight: '700', fontSize: 16 }}>Save</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          )}
+
+          <TouchableOpacity
+            onPress={handleNext}
+            style={{
+              backgroundColor: colors.primary,
+              paddingVertical: 14,
+              paddingHorizontal: 40,
+              borderRadius: 30,
+              marginBottom: 12,
+            }}
+          >
+            <Text style={{ color: 'white', fontWeight: '700', fontSize: 18 }}>Continue</Text>
+          </TouchableOpacity>
+
+          {!committed && (
             <TouchableOpacity
-              onPress={handleNext}
+              onPress={() => confirmSkip('Photo')}
               style={{
-                backgroundColor: colors.primary,
                 paddingVertical: 14,
                 paddingHorizontal: 40,
                 borderRadius: 30,
-                marginBottom: 12,
+                borderWidth: 1,
+                borderColor: colors.primary,
+                alignItems: 'center',
               }}
-              activeOpacity={0.85}
             >
-              <Text style={{ color: 'white', fontWeight: '700', fontSize: 18 }}>Continue</Text>
+              <Text style={{ color: colors.primary, fontWeight: '700', fontSize: 18 }}>Skip</Text>
             </TouchableOpacity>
-
-            
-            {!committed && (
-  <TouchableOpacity
-    onPress={() => confirmSkip('Photo')}
-    style={{
-      paddingVertical: 14,
-      paddingHorizontal: 40,
-      borderRadius: 30,
-      borderWidth: 1,
-      borderColor: colors.primary,
-      alignItems: 'center',
-    }}
-  >
-    <Text style={{ color: colors.primary, fontWeight: '700', fontSize: 18 }}>Skip</Text>
-  </TouchableOpacity>
-)}
-
-          </View>
-        )}
+          )}
+        </View>
+      )}
+ 
 
         {/* New Signature Step */}
         {/* Signature Step */}

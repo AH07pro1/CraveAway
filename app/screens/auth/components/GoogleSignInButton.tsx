@@ -33,25 +33,28 @@ const handleGoogleSignIn = async () => {
 
     // Post onboarding if any
     if (onboardStr) {
-      const onboardingPayload = JSON.parse(onboardStr);
-      const res = await fetch(`${API_URL}/api/onboarding`, {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json', 
-          Authorization: `Bearer ${token}` 
-        },
-        body: JSON.stringify(onboardingPayload),
-      });
+  const onboardingPayload = JSON.parse(onboardStr);
+  const res = await fetch(`${API_URL}/api/onboarding`, {
+    method: 'POST',
+    headers: { 
+      'Content-Type': 'application/json', 
+      Authorization: `Bearer ${token}` 
+    },
+    body: JSON.stringify({
+      photoUrl: onboardingPayload.photoUri || null,
+      message: onboardingPayload.message || null,
+    }),
+  });
 
-      if (!res.ok) {
-        const text = await res.text();
-        console.warn('Onboarding post failed:', text);
-        Alert.alert('Error', 'Failed to post onboarding data');
-      } else {
-        console.log('✅ Onboarding posted successfully');
-        await AsyncStorage.removeItem('pendingOnboarding');
-      }
-    }
+  if (!res.ok) {
+    const text = await res.text();
+    console.warn('Onboarding post failed:', text);
+    Alert.alert('Error', 'Failed to post onboarding data');
+  } else {
+    console.log('✅ Onboarding posted successfully');
+    await AsyncStorage.removeItem('pendingOnboarding');
+  }
+}
 
     // Navigate after onboarding
     const hasPaid = await AsyncStorage.getItem('hasPaid');

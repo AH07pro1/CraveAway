@@ -48,6 +48,7 @@ export default function SignInScreen() {
 
       if (signInAttempt.status === 'complete') {
         await setActive({ session: signInAttempt.createdSessionId });
+        
         const token = signInAttempt.createdSessionId;
 
         const onboardingString = await AsyncStorage.getItem('pendingOnboarding');
